@@ -1,0 +1,341 @@
+/*
+ * event.css - the event game (landing, registration, rules, game, saving, results, review).
+ * Built on the design system: every colour is a token, so any brand colour pair stays readable in both themes.
+ * Unlayered, so it wins over the system layers.
+ */
+
+/* ---- page frame --------------------------------------------------------------------------------------------- */
+#app[data-view="game"] .footer,
+#app[data-view="saving"] .footer { display: none; }
+/* the game fits the screen: the answers stay in the thumb zone and the question card absorbs any excess (it scrolls inside if needed) */
+#app[data-view="game"] { block-size: 100vh; block-size: 100dvh; min-block-size: 0; }
+#app[data-view="game"] .screen__main { padding-block-end: var(--space-3); min-block-size: 0; }
+
+.screen__main[data-view="landing"] { justify-content: center; }
+.screen__main[data-view="saving"] { justify-content: center; }
+.screen__main[data-view="status"] { justify-content: center; }
+/* The <main> keeps ONE geometry for the whole session; each view narrows itself. (Resizing <main> per view made the browser
+   report a layout shift of the persistent container on every screen change: CLS 0.19 over one game on a desktop.) */
+.screen__main > :is(.ev-register, .ev-rules, .ev-saving-wrap, .ev-results, .ev-review) { inline-size: 100%; margin-inline: auto; }
+.ev-register { max-inline-size: 40rem; }
+.ev-rules { max-inline-size: 54rem; }
+.ev-saving-wrap { max-inline-size: 36rem; }
+.ev-results { max-inline-size: 46rem; }
+.ev-review { max-inline-size: 54rem; }
+
+.ev-skeleton { align-content: center; }
+.ev-banner-slot:empty { display: none; }
+.ev-draft { position: relative; }
+
+.ev-head { display: grid; justify-items: center; gap: var(--space-2); text-align: center; padding-block-start: var(--space-4); }
+.ev-title { font-family: var(--font-display); font-weight: 800; font-size: var(--text-3xl); line-height: 1.02; letter-spacing: var(--tracking-display); text-wrap: balance; }
+.ev-title--result { font-size: var(--text-2xl); }
+/* anything that can carry a player's or an admin's free text must wrap instead of widening the page (a 40-letter surname, a URL) */
+.ev-title, .ev-sub, .ev-hero .hero__title, .ev-hero .hero__tagline, .ev-description, .ev-rule__body, .ev-resume__text, .ev-closed__text, .ev-note { overflow-wrap: anywhere; }
+.ev-sub { color: var(--fg-soft); font-size: var(--text-md); max-inline-size: 38rem; }
+.ev-note { display: block; color: var(--fg-muted); font-size: var(--text-sm); text-align: center; text-wrap: balance; }
+.ev-note > .icon { display: inline-block; vertical-align: -0.2em; margin-inline-end: 0.4rem; } /* inline, so a note that wraps ("La première question démarre le chrono immédiatement.") keeps its icon next to the text */
+.ev-note > span { display: inline; }
+.ev-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); justify-content: center; }
+.ev-actions--end { margin-block-start: var(--space-4); }
+@media (max-width: 30rem) {
+  .ev-actions { flex-direction: column; align-items: stretch; }
+  .ev-actions .btn { inline-size: 100%; }
+}
+
+/* ---- landing ------------------------------------------------------------------------------------------------ */
+.ev-landing { display: grid; gap: var(--space-6); justify-items: center; }
+.ev-hero { padding-block: clamp(1rem, 4vh, 3rem) 0; gap: var(--space-4); }
+.ev-hero .hero__title { max-inline-size: 20ch; }
+.ev-hero .hero__eyebrow > span { text-wrap: balance; } /* "Taets Art & Event Park, Amsterdam · 7–8 Oct 2026" must not strand "2026" on a line of its own */
+/* a very long unbroken location must wrap inside the pill instead of widening the whole page (found by e2e/tests/10-mobile) */
+.ev-hero .hero__eyebrow { max-inline-size: 100%; }
+.ev-hero .hero__eyebrow > span { min-inline-size: 0; overflow-wrap: anywhere; }
+.ev-emblem {
+  display: inline-flex; align-items: center; gap: 0.85rem;
+  padding: 0.6rem 1rem; border-radius: var(--radius-pill);
+  background: var(--glass-bg); border: 1px solid var(--brand-border);
+  box-shadow: var(--highlight), 0 0 44px -10px var(--brand-glow);
+  -webkit-backdrop-filter: blur(var(--glass-blur)); backdrop-filter: blur(var(--glass-blur));
+}
+.ev-emblem__mark img { inline-size: 2.4rem; block-size: 2.4rem; }
+.ev-emblem__logo { block-size: 2.4rem; inline-size: auto; max-inline-size: 9rem; object-fit: contain; }
+.ev-emblem__x { color: var(--fg-muted); display: grid; place-items: center; }
+.ev-description { max-inline-size: 40rem; color: var(--fg-muted); font-size: var(--text-base); line-height: 1.55; text-align: center; }
+.ev-play { min-inline-size: 17rem; max-inline-size: 100%; }
+.ev-topics { display: grid; justify-items: center; gap: var(--space-3); max-inline-size: 46rem; }
+.ev-chips { list-style: none; padding: 0; justify-content: center; }
+.ev-chip__n {
+  display: inline-grid; place-items: center; min-inline-size: 1.5em; padding-inline: 0.4em;
+  border-radius: var(--radius-pill); background: color-mix(in oklab, var(--chip) 24%, transparent);
+  font-variant-numeric: tabular-nums; font-size: 0.92em;
+}
+.ev-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); inline-size: 100%; max-inline-size: 42rem; gap: var(--space-3); }
+.ev-stats .stat { padding: var(--space-4); }
+.ev-stats .stat__value { font-size: var(--text-2xl); }
+.ev-stats:has(> :only-child) { grid-template-columns: minmax(0, 18rem); justify-content: center; }
+.ev-live { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--success-text); font-weight: 650; }
+@media (max-width: 36rem) {
+  .ev-stats .stat { padding: var(--space-3); gap: 0.2rem; }
+  .ev-stats .stat__icon { display: none; }
+  .ev-stats .stat__label { font-size: var(--text-xs); }
+}
+.ev-keys-hint { display: inline-flex; align-items: center; gap: 0.6rem; color: var(--fg-muted); font-size: var(--text-sm); text-align: center; }
+
+.ev-resume {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--space-3) var(--space-4);
+  inline-size: 100%; max-inline-size: 38rem; padding: var(--space-4) var(--space-5); text-align: start;
+}
+.ev-resume__icon { display: grid; place-items: center; inline-size: 2.75rem; block-size: 2.75rem; border-radius: var(--radius-md); background: var(--brand-solid); color: var(--on-brand); }
+.ev-resume__title { font-size: var(--text-md); }
+.ev-resume__text p { color: var(--fg-muted); font-size: var(--text-sm); }
+.ev-resume__actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ev-resume__actions .btn--primary { flex: 1 1 auto; }
+
+.ev-closed {
+  display: grid; justify-items: center; gap: var(--space-3); text-align: center;
+  inline-size: 100%; max-inline-size: 34rem; padding: var(--space-6);
+}
+.ev-closed__icon { display: grid; place-items: center; inline-size: 3.5rem; block-size: 3.5rem; border-radius: 50%; background: var(--warning-soft); color: var(--warning-text); --icon-size: 1.75rem; }
+.ev-closed__title { font-size: var(--text-xl); }
+.ev-closed__text { color: var(--fg-muted); }
+
+/* laptops and booth screens: keep the whole landing page (hero, topics, stats) above the fold */
+@media (min-width: 48rem) and (max-height: 62rem) {
+  .ev-landing { gap: var(--space-5); }
+  .ev-hero { gap: var(--space-3); padding-block-start: 0; }
+  .ev-hero .hero__title { font-size: clamp(2.5rem, 8.2vh, 4.4rem); }
+  .ev-hero .hero__tagline { font-size: var(--text-md); }
+  .ev-description { font-size: var(--text-sm); max-inline-size: 46rem; }
+  .ev-stats .stat { padding: var(--space-3) var(--space-4); }
+  .ev-stats .stat__value { font-size: var(--text-xl); }
+}
+
+/* ---- registration ------------------------------------------------------------------------------------------- */
+.ev-register { display: grid; gap: var(--space-5); }
+.ev-form { padding: clamp(1.1rem, 4vw, 2rem); border-radius: var(--radius-xl); display: grid; gap: var(--space-5); }
+.ev-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ev-form-grid > .field--full { grid-column: 1 / -1; }
+@media (max-width: 34rem) { .ev-form-grid { grid-template-columns: minmax(0, 1fr); } }
+.ev-privacy { display: flex; gap: 0.5rem; align-items: flex-start; color: var(--fg-muted); font-size: var(--text-sm); }
+.ev-privacy .icon { margin-block-start: 0.15rem; flex: none; }
+.ev-consent .check { align-items: flex-start; font-size: var(--text-sm); min-block-size: var(--control-h); padding-block: 0.4rem; }
+.ev-form-actions { justify-content: space-between; margin-block-start: 0; }
+.ev-submit { min-inline-size: 11rem; }
+@media (max-width: 34rem) {
+  .ev-form-actions { flex-direction: column-reverse; align-items: stretch; }
+  .ev-form-actions .btn { inline-size: 100%; }
+}
+.field__error[hidden] { display: none; }
+
+/* ---- rules -------------------------------------------------------------------------------------------------- */
+.ev-rules { display: grid; gap: var(--space-5); }
+.ev-rule-grid { display: grid; gap: var(--space-4); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 40rem) { .ev-rule-grid { grid-template-columns: minmax(0, 1fr); } }
+.ev-rule {
+  --_soft: var(--brand-soft); --_fg: var(--brand-text);
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-4); align-items: start;
+  padding: var(--space-5); border-radius: var(--radius-lg);
+  background: var(--bg-raised); border: 1px solid var(--border); box-shadow: var(--highlight), var(--shadow-sm);
+}
+.ev-rule--accent { --_soft: var(--accent-soft); --_fg: var(--accent-text); }
+.ev-rule--success { --_soft: var(--success-soft); --_fg: var(--success-text); }
+.ev-rule__icon { display: grid; place-items: center; inline-size: 2.9rem; block-size: 2.9rem; border-radius: var(--radius-md); background: var(--_soft); color: var(--_fg); --icon-size: 1.45rem; flex: none; }
+.ev-rule__body { display: grid; gap: 0.3rem; min-inline-size: 0; }
+.ev-rule__title { font-family: var(--font-display); font-weight: 700; font-size: var(--text-md); line-height: 1.15; letter-spacing: var(--tracking-tight); }
+.ev-rule__body p { color: var(--fg-muted); font-size: var(--text-sm); }
+.ev-keys { display: flex; gap: var(--space-4); margin-block-start: 0.35rem; }
+.ev-keys__item { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 650; font-size: var(--text-sm); color: var(--fg); }
+.ev-buzzer { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-4); padding: var(--space-4) var(--space-5); }
+.ev-buzzer .ev-rule__icon { --_soft: var(--info-soft, var(--brand-soft)); --_fg: var(--info-text, var(--brand-text)); }
+.ev-buzzer__status { color: var(--fg-muted); font-size: var(--text-sm); }
+/* a visitor's own phone has no buzzers: the Bluetooth pairing UI (app bar button + rules card) is for the booth laptop / tablet (?kiosk=1) and desktops */
+@media (pointer: coarse) { html:not([data-kiosk]) :is(.buzzer-btn, .ev-buzzer) { display: none; } }
+@media (max-width: 36rem) { .ev-buzzer { grid-template-columns: auto minmax(0, 1fr); } .ev-buzzer .btn { grid-column: 1 / -1; } }
+.ev-start-row { display: grid; justify-items: center; gap: var(--space-3); padding-block: var(--space-2) 0; }
+.ev-start-row > .ev-rules-error { inline-size: 100%; }
+.ev-start-after { display: grid; justify-items: center; gap: var(--space-3); padding-block-end: var(--space-6); }
+.ev-start { max-inline-size: 30rem; }
+/* phones: the rule cards are taller than the screen, so "Start the game" stays pinned in the thumb zone (flex, not grid: a sticky grid item cannot leave its own row) */
+@media (max-width: 40rem) {
+  .ev-rules { display: flex; flex-direction: column; }
+  .ev-start-row {
+    position: sticky; inset-block-end: 0; z-index: var(--z-raised, 10);
+    padding-block: var(--space-4) calc(var(--space-3) + env(safe-area-inset-bottom, 0px));
+    background: linear-gradient(to top, color-mix(in srgb, var(--bg) 94%, transparent) 72%, transparent);
+  }
+}
+.ev-rules-error:empty { display: none; }
+
+/* ---- game --------------------------------------------------------------------------------------------------- */
+.ev-game { flex: 1 1 0; display: flex; flex-direction: column; gap: var(--space-4); min-block-size: 0; }
+.ev-game-head { padding-block-start: var(--space-1); }
+.ev-chip-host { display: flex; }
+.game-counter { font-size: var(--text-xl); }
+.ev-ring { --size: 5.75rem; --stroke: 9; }
+@media (min-width: 48rem) { .ev-ring { --size: 7.5rem; } }
+.ev-ring--reset .ring__bar { transition: none !important; }
+.ev-ring.is-locked { opacity: 0.6; }
+.ev-ring.is-locked .ring__label { animation: none; }
+@media (prefers-reduced-motion: reduce) { .ring__bar { transition: none; } }
+.ev-steps > i { block-size: 0.5rem; }
+.ev-question {
+  flex: 1 1 0; display: grid; align-content: center; align-content: safe center; justify-items: center; gap: var(--space-4);
+  min-block-size: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding: clamp(1.1rem, 3vh, 2.5rem) clamp(1rem, 4vw, 3rem);
+}
+.ev-question:focus { outline: none; }
+/* a card that scrolls inside is a keyboard tab stop (tabindex 0 is set by game.js only then): show where the focus is */
+.ev-question[tabindex="0"]:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.ev-question.is-entering { animation: ev-q-in var(--dur-slow) var(--ease-out); }
+@keyframes ev-q-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ev-question.is-entering { animation: none; } }
+.ev-question-text { overflow-wrap: anywhere; }
+.ev-question-text[data-size="lg"] { font-size: clamp(1.75rem, 1.1rem + 2.2vw, 3.4rem); }
+.ev-question-text[data-size="md"] { font-size: clamp(1.5rem, 1.05rem + 1.6vw, 2.6rem); }
+.ev-question-text[data-size="sm"] { font-size: clamp(1.3rem, 1rem + 1.1vw, 2.1rem); line-height: 1.18; }
+.ev-question-text[data-size="xs"] { font-size: clamp(1.12rem, 0.95rem + 0.7vw, 1.65rem); line-height: 1.24; }
+.ev-figure { margin: 0; }
+.ev-media { display: block; --_h: min(24dvh, 15rem); max-block-size: var(--_h); inline-size: auto; max-inline-size: 100%; object-fit: contain; margin-inline: auto; }
+.ev-question:has([data-size="md"]) .ev-media { --_h: min(18dvh, 11rem); }
+.ev-question:has([data-size="sm"]) .ev-media, .ev-question:has([data-size="xs"]) .ev-media { --_h: min(12dvh, 8rem); }
+.ev-lock {
+  display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem 1rem; border-radius: var(--radius-pill);
+  background: var(--brand-soft-strong); border: 1px solid var(--brand-border); color: var(--fg); font-size: var(--text-sm); font-weight: 650;
+  animation: ev-lock-in var(--dur) var(--ease-spring);
+}
+.ev-lock--timeout { background: var(--warning-soft); border-color: color-mix(in oklab, var(--amber) 45%, transparent); }
+@keyframes ev-lock-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ev-lock { animation: none; } }
+.ev-bottom { padding-block-start: var(--space-1); }
+.answer--plain .answer__icon { display: none; }
+.answers.ev-answers { gap: var(--space-4); }
+.answer:disabled:not(.is-selected):not(.is-dimmed) { opacity: 1; }
+.answer.is-selected { outline-offset: 3px; }
+@media (max-height: 34rem) and (max-width: 34.99rem) {
+  /* tiny windows: let the page scroll rather than squeeze everything */
+  #app[data-view="game"] { block-size: auto; min-block-size: 100dvh; }
+  .answer { min-block-size: 5.5rem; padding-block: 0.6rem 0.9rem; }
+  .ev-ring { --size: 4.5rem; }
+  .ev-question { flex: 1 0 auto; min-block-size: 5rem; padding-block: 0.75rem; }
+}
+@media (max-width: 31rem) {
+  .ev-game { gap: var(--space-3); }
+  .ev-question { padding-inline: 1rem; }
+}
+/* Phones in portrait with the browser toolbars showing (the visible height is often 600-780px, not the 844px of the spec sheet):
+   two giant stacked answers would eat half of the screen and leave a 150px slot for the question. Keep every answer a big target
+   (>= 4.5rem tall) but give the room back to the question text, the part that must be read before the clock runs out. */
+@media (max-width: 31rem) and (max-height: 49rem), (max-height: 34rem) and (min-width: 35rem) {
+  .ev-game { gap: 0.5rem; }
+  .ev-game-head { gap: var(--space-3); }
+  .game-counter { font-size: var(--text-lg); }
+  .ev-ring { --size: 4.25rem; --stroke: 10; }
+  .ev-steps > i { block-size: 0.4rem; }
+  .ev-question { padding: 0.75rem 1rem; gap: var(--space-3); }
+  .ev-question-text[data-size="lg"] { font-size: clamp(1.4rem, 0.95rem + 2.4vw, 1.75rem); }
+  .ev-question-text[data-size="md"] { font-size: clamp(1.3rem, 0.95rem + 1.6vw, 1.5rem); }
+  .ev-question-text[data-size="sm"] { font-size: clamp(1.15rem, 0.9rem + 1.1vw, 1.3rem); }
+  .ev-question-text[data-size="xs"] { font-size: clamp(1rem, 0.85rem + 0.7vw, 1.15rem); }
+  .ev-media { --_h: min(15dvh, 8.5rem); }
+  .ev-question:has([data-size="md"]) .ev-media, .ev-question:has([data-size="sm"]) .ev-media, .ev-question:has([data-size="xs"]) .ev-media { --_h: min(11dvh, 6.5rem); }
+  .answers.ev-answers { gap: 0.6rem; }
+  .answers.ev-answers > .answer {
+    min-block-size: clamp(4.5rem, 10.5dvh, 6.25rem); padding: 0.5rem 1rem 0.7rem; margin-block-end: 0.4rem;
+    display: flex; justify-content: center; align-items: center; gap: 0.75rem;
+  }
+  .answers.ev-answers .answer__label { min-inline-size: 0; }
+  @media (hover: hover) { .answers.ev-answers > .answer { padding-inline: 2.75rem; } } /* room for the key cap, the label stays centred */
+  .answers.ev-answers .answer__icon { --icon-size: 1.75rem; }
+  .answers.ev-answers .answer__label { font-size: clamp(1.25rem, 0.7rem + 3.2cqi, 1.9rem); }
+}
+/* Short desktop windows (a 1280x720 screen minus the browser chrome leaves ~600px): the same trade, side by side buttons. */
+@media (min-width: 35rem) and (min-height: 34.01rem) and (max-height: 46rem) {
+  .ev-game { gap: 0.6rem; }
+  .ev-ring { --size: 5rem; --stroke: 10; }
+  .ev-question { padding: 0.9rem 1.5rem; gap: var(--space-3); }
+  .ev-media { --_h: min(18dvh, 9rem); }
+  .answers.ev-answers > .answer {
+    min-block-size: clamp(4.75rem, 14dvh, 6.5rem); padding: 0.6rem 2.75rem 0.8rem; margin-block-end: 0.4rem;
+    display: flex; justify-content: center; align-items: center; gap: 0.9rem;
+  }
+  .answers.ev-answers .answer__icon { --icon-size: 2rem; }
+  .answers.ev-answers .answer__label { min-inline-size: 0; font-size: clamp(1.4rem, 0.8rem + 2cqi, 2.1rem); }
+}
+/* Tablet / laptop / TV: the question and the two answers form ONE compact block in the middle of the screen, so the eyes do not
+   travel between a huge empty card and buttons parked at the bottom (it is a speed game). Phones keep the thumb-friendly bottom bar. */
+@media (min-width: 48rem) and (min-height: 38rem) {
+  .ev-game { justify-content: center; inline-size: 100%; max-inline-size: 80rem; margin-inline: auto; gap: var(--space-5); }
+  .ev-question { flex: 0 0 auto; min-block-size: clamp(8rem, 22dvh, 15rem); max-block-size: 52dvh; }
+  .ev-bottom { margin-block-start: 0; }
+}
+/* Landscape phones (e.g. 844x390): question on the left, the two answers stacked on the right, nothing below the fold. */
+@media (max-height: 34rem) and (min-width: 35rem) {
+  #app[data-view="game"] { block-size: 100dvh; }
+  .ev-game { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); gap: 0.4rem var(--space-5); }
+  .ev-game-head { grid-column: 1; grid-row: 1; padding-block-start: 0; }
+  .ev-steps { grid-column: 1; grid-row: 2; }
+  .ev-question { grid-column: 1; grid-row: 3; flex: none; }
+  .ev-bottom { grid-column: 2; grid-row: 1 / -1; margin: 0; padding: 0; display: grid; }
+  .answers.ev-answers { grid-template-columns: minmax(0, 1fr); grid-auto-rows: minmax(0, 1fr); }
+  .answers.ev-answers > .answer { min-block-size: 0; }
+}
+
+/* ---- saving ------------------------------------------------------------------------------------------------- */
+.ev-saving-wrap { display: grid; gap: var(--space-4); justify-items: center; text-align: center; padding: var(--space-8) var(--space-6); border-radius: var(--radius-xl); }
+.ev-saving { display: grid; justify-items: center; gap: var(--space-4); }
+.ev-spinner { --spinner-size: 3rem; inline-size: 3rem; block-size: 3rem; }
+.ev-saving__icon { display: grid; place-items: center; inline-size: 3.5rem; block-size: 3.5rem; border-radius: 50%; background: var(--success-soft); color: var(--success-text); --icon-size: 1.75rem; }
+.ev-saving__icon--danger { background: var(--danger-soft); color: var(--danger-text); }
+.ev-saving__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-3); }
+
+/* ---- results ------------------------------------------------------------------------------------------------ */
+.ev-results { display: grid; gap: var(--space-6); }
+.ev-score { padding-block: var(--space-2); }
+.ev-rank { font-size: var(--text-md); }
+.ev-tiles { inline-size: 100%; }
+.ev-tiles .stat { grid-template-rows: 1fr auto; } /* a label that wraps in one tile ("Sans réponse") must not push its number out of line with the others */
+@media (max-width: 24rem) { .ev-tiles .stat { padding: var(--space-3) var(--space-2); } .ev-tiles .stat__label { font-size: 0.68rem; letter-spacing: 0; } .ev-tiles .stat__icon { display: none; } }
+.ev-kiosk-next { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; color: var(--fg-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+
+/* ---- review ------------------------------------------------------------------------------------------------- */
+.ev-review { display: grid; gap: var(--space-5); }
+.ev-review-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.ev-review-list { list-style: none; padding: 0; display: grid; gap: var(--space-3); }
+.ev-review-item { grid-template-columns: auto minmax(0, 1fr); } /* the points sit in the top row: the question keeps the full width, even at 320px */
+.ev-review-points { margin-inline-start: auto; padding-inline-start: 0.5rem; }
+.ev-review-main { display: grid; gap: 0.4rem; min-inline-size: 0; }
+/* long unbroken strings (URLs, identifiers) in a question or an explanation must wrap, never widen the page */
+.ev-review-main, .ev-review-item .review-item__q, .ev-review-item .review-item__explain, .ev-review-item .chip strong { overflow-wrap: anywhere; min-inline-size: 0; }
+/* number | category (shrinks and wraps when long) | points: the points never drop onto a line of their own under a long category name */
+.ev-review-top { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 0.5rem; }
+.ev-review-top .chip { justify-self: start; min-inline-size: 0; }
+.ev-review-top .ev-review-points { grid-column: 3; justify-self: end; margin-inline-start: 0; }
+.ev-review-n { font-variant-numeric: tabular-nums; font-weight: 800; color: var(--fg-muted); }
+.ev-chip-label { opacity: 0.85; font-weight: 500; }
+.ev-review-item .review-item__answers { align-items: center; }
+.ev-review-item .review-item__answers > span:not(.chip) { display: inline-flex; align-items: center; gap: 0.35rem; color: var(--fg-muted); font-size: var(--text-sm); }
+.ev-review-item .chip { white-space: normal; }
+/* "Your answer: <long label>" is a sentence in a pill: let it flow and wrap like text instead of forming two columns */
+.ev-review-item .chip--plain { display: inline-block; text-align: start; line-height: 1.35; border-radius: 1rem; padding-block: 0.3rem; }
+.ev-review-item .chip--plain .icon { vertical-align: -0.2em; margin-inline-end: 0.35em; }
+.ev-review-item .chip--plain .ev-chip-label { margin-inline-end: 0.35em; }
+.ev-filter { max-inline-size: 100%; }
+.ev-filter span { white-space: normal; text-align: center; line-height: 1.2; padding-block: 0.35rem; } /* "Erreurs seulement (8)" must wrap inside its segment on a 320px phone */
+.ev-filter input { inset: -0.4rem 0; inline-size: auto; block-size: auto; }
+@media (max-width: 30rem) { .ev-review-bar > .btn { inline-size: 100%; } .ev-filter { inline-size: 100%; } .ev-filter > label { flex: 1 1 0; } }
+
+/* ---- full page states ---------------------------------------------------------------------------------------- */
+.ev-empty { margin-block: auto; }
+.ev-empty-title { font-size: var(--text-2xl); }
+
+
+/* Landing: labelled "Connect buzzers" button under Play (booth laptop / kiosk) */
+.ev-buzzer-cta { display: flex; justify-content: center; margin-block-start: var(--space-3, 0.75rem); }
+.ev-buzzer-cta[hidden] { display: none; }
+.ev-buzzer-cta .btn { gap: var(--space-2, 0.5rem); }
+
+
+/* Landing is the screen shown on the booth display: keep the hero in the middle of the page */
+main[data-view="landing"] { display: flex; flex-direction: column; justify-content: center; }
+main[data-view="landing"] .ev-hero { padding-block: 0; }

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-bg="aurora">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>Gravitee Quiz</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/shared/js/theme-boot.js"></script>
+  <link rel="preload" href="/shared/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/shared/css/fonts.css">
+  <link rel="stylesheet" href="/shared/css/tokens.css">
+  <link rel="stylesheet" href="/shared/css/base.css">
+  <link rel="stylesheet" href="/shared/css/components.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/event.css">
+  <link rel="stylesheet" href="/css/buzzer.css">
+  <script src="/config.js"></script>
+  <script type="module" src="/js/event/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
+  <div id="app" class="screen" aria-busy="true">
+    <header class="appbar">
+      <span class="brand"><img class="brand__mark" src="/shared/img/gravitee-mark.svg" alt="" width="30" height="30"></span>
+    </header>
+    <main id="main" class="screen__main container" tabindex="-1">
+      <section class="hero ev-skeleton" aria-hidden="true">
+        <span class="skeleton skeleton--circle" style="inline-size: 4rem"></span>
+        <span class="skeleton skeleton--title" style="inline-size: min(26rem, 80%); block-size: 3.5rem"></span>
+        <span class="skeleton skeleton--text" style="inline-size: min(20rem, 70%)"></span>
+        <span class="skeleton skeleton--card" style="inline-size: min(16rem, 70%); block-size: 4rem; border-radius: 999px"></span>
+      </section>
+    </main>
+  </div>
+  <noscript><p class="container u-center-text" style="padding-block: 2rem">This quiz needs JavaScript. Please enable it to play. · Ce quiz nécessite JavaScript. Veuillez l’activer pour jouer.</p></noscript>
+</body>
+</html>

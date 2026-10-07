@@ -1,0 +1,92 @@
+/*
+ * app.css - what the player app adds on top of the design system (shared/css/*): chrome tweaks used by every page.
+ * Unlayered on purpose: it always wins over the system's cascade layers.
+ */
+
+/* ---- app bar ------------------------------------------------------------------------------- */
+.appbar__brand { display: flex; align-items: center; min-inline-size: 0; flex: 0 1 auto; }
+.appbar .brand { min-block-size: var(--control-h); }
+/* 320px phones: the brand name would be cut to "AI M..." between the mark and the controls. Keep the mark, keep the name for assistive tech. */
+@media (max-width: 21.5rem) {
+  .appbar .brand__name { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .appbar .brand { min-inline-size: var(--control-h); justify-content: center; }
+}
+@media (max-width: 30rem) {
+  .appbar { gap: 0.4rem; }
+  .appbar .brand { font-size: 1rem; gap: 0.5rem; }
+  .appbar .brand__mark { inline-size: 1.7rem; block-size: 1.7rem; }
+  .appbar__actions { gap: 0.15rem; }
+  .lang-switch span { padding-inline: 0.55rem; }
+}
+.brand__event-logo { block-size: 1.9rem; inline-size: auto; max-inline-size: 8rem; object-fit: contain; flex: none; }
+.appbar__actions > .btn { flex: none; }
+
+/* language switch: keep the compact look but give each radio a 44px-tall hit area */
+.lang-switch label { position: relative; }
+.lang-switch input { inset: -0.55rem -0.3rem; inline-size: auto; block-size: auto; }
+.lang-switch span { font-weight: 700; letter-spacing: 0.02em; }
+
+/* while the page is still loading its content, the footer would sit mid-screen and then be pushed away (layout shift): show it with the content */
+#app[aria-busy="true"] .footer, .screen__main[aria-busy="true"] ~ .footer { visibility: hidden; }
+
+/* ---- footer -------------------------------------------------------------------------------- */
+.footer__logo { display: inline-flex; align-items: center; min-block-size: 1.75rem; }
+.footer__hub { display: inline-flex; align-items: center; gap: 0.4rem; min-block-size: 2.75rem; padding-inline: 0.5rem; color: var(--fg-muted); text-decoration: none; font-weight: 600; }
+.footer__hub:hover { color: var(--fg); text-decoration: underline; }
+
+/* ---- misc ---------------------------------------------------------------------------------- */
+.screen__main:focus, main:focus { outline: none; }
+[tabindex="-1"]:focus { outline: none; }
+.u-no-wrap { white-space: nowrap; }
+
+/* inline icon + text pairs */
+.icon-text { display: inline-flex; align-items: center; gap: 0.45rem; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+
+/* a language switch re-renders the view: do not replay the entrance animations */
+[data-still] .u-rise, [data-still] .u-pop, [data-still] .u-fade-in { animation: none !important; }
+
+/* ---- phones and tablets (iOS Safari first, same rules help Chrome Android) ---------------------------------------------- */
+/* viewport-fit=cover lets the page run under the notch / Dynamic Island when an iPhone is held in landscape (44-59px on the side):
+   keep text, buttons and the app bar content out of it. env() is 0 everywhere else, so nothing changes on desktop or in portrait. */
+.appbar, .container, .footer, .toast-region {
+  padding-inline: max(var(--gutter), env(safe-area-inset-left, 0px)) max(var(--gutter), env(safe-area-inset-right, 0px));
+}
+/* an accidental double tap on the question card or the background would zoom the page in (iOS Safari): the game is a fixed-height screen,
+   so the zoomed page would hide the answers. Taps stay instant, pinch zoom stays available. */
+html, body { touch-action: manipulation; }
+/* no pull-to-refresh (Chrome Android) while a game is running: it would reload the page mid-question */
+html:has(#app[data-view="game"]) { overscroll-behavior-y: none; }
+/* WebKit keeps a radio input at its intrinsic 12px size whatever `inset` says (Chrome and Firefox stretch it), so give the <label> itself
+   the enlarged hit area: Safari then gets the same >= 44px targets as the other engines. */
+.lang-switch > label::before { inset-block: -0.55rem; inset-inline: -0.3rem; }
+.ev-filter > label::before { inset-block: -0.45rem; }
+/* Windows high contrast / forced colours: backgrounds are dropped, so everything that was told apart by a fill alone needs a border or a system colour.
+   (without this the selected language, the answer buttons and the question progress are invisible) */
+@media (forced-colors: active) {
+  .segmented input:checked + span { background: Highlight; color: HighlightText; forced-color-adjust: none; }
+  .answer { border: 2px solid ButtonText; }
+  .answer.is-selected { border-color: Highlight; outline: 3px solid Highlight; }
+  .steps > i { border: 1px solid CanvasText; }
+  .steps > i.is-done, .steps > i.is-correct, .steps > i.is-wrong { background: CanvasText; forced-color-adjust: none; }
+  .steps > i.is-current { background: Highlight; border-color: Highlight; forced-color-adjust: none; }
+}
+/* The sticky app bar is a 62% see-through blur. Without the blur (a browser that lacks backdrop-filter, or "Reduce transparency" asked for in the OS)
+   the page text scrolling under it would show through, sharp, behind the brand and the controls: make it solid. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .appbar { background: color-mix(in oklab, var(--bg) 94%, transparent); }
+  .ev-emblem { background: var(--glass-bg-strong); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .appbar { background: var(--bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .glass, .ev-emblem, .toast { background: var(--glass-bg-strong); -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+/* The drifting aurora re-composites a layer of about 2400x3000 device pixels on every frame and forces each backdrop-filter panel above it
+   (app bar, question card, forms) to re-blur on every frame. On touch devices that costs battery and frame rate for a 4vmax drift nobody
+   can see: same gradient, standing still. (Desktop and the TV scoreboard keep the slow drift.) */
+@media (hover: none) and (pointer: coarse) {
+  html::before { animation: none; will-change: auto; }
+}

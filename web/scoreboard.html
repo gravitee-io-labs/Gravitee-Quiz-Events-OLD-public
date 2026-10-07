@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-bg="aurora" data-display="tv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="robots" content="noindex">
+  <title>Scoreboard · Gravitee Quiz</title>
+  <!-- sets data-theme before first paint (external classic script: CSP safe) -->
+  <script src="/shared/js/theme-boot.js"></script>
+  <link rel="preload" href="/shared/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/shared/fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/shared/css/fonts.css">
+  <link rel="stylesheet" href="/shared/css/tokens.css">
+  <link rel="stylesheet" href="/shared/css/base.css">
+  <link rel="stylesheet" href="/shared/css/components.css">
+  <link rel="stylesheet" href="/css/scoreboard.css">
+  <script src="/config.js"></script>
+  <script type="module" src="/js/scoreboard/main.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#board" data-i18n="a11y.skip">Skip to the leaderboard</a>
+
+  <div class="sb" id="sb" data-state="loading" data-view="board" data-mode="full" data-transport="connecting">
+
+    <header class="sb-head">
+      <div class="sb-head__row sb-head__row--top">
+        <a class="sb-brand" id="sb-brand" href="/">
+          <img class="sb-brand__mark" src="/shared/img/gravitee-mark.svg" alt="" width="40" height="40">
+          <img class="sb-brand__logo" id="sb-logo" alt="" hidden>
+          <h1 class="sb-brand__title" id="sb-title">Quiz</h1>
+        </a>
+        <span class="live sb-live" id="sb-live" data-state="connecting">
+          <span id="sb-live-label">Connecting…</span>
+          <svg class="sb-icon sb-live__poll" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v4.5h-4.5"/></svg>
+        </span>
+      </div>
+      <div class="sb-head__row sb-head__row--bottom">
+        <p class="sb-event" id="sb-event" hidden></p>
+        <div class="sb-controls" id="sb-controls" role="group" data-i18n-attr="aria-label:controls.group" aria-label="Display options">
+          <div id="sb-lang-slot"></div>
+          <div id="sb-theme-slot"></div>
+          <button class="btn btn--ghost btn--icon sb-fs" id="sb-fs" type="button" aria-pressed="false" hidden>
+            <svg class="sb-icon sb-fs__enter" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>
+            <svg class="sb-icon sb-fs__exit" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="sb-main" id="board" tabindex="-1">
+
+      <!-- READY: podium + ranks + QR -->
+      <section class="sb-view sb-view--board" id="view-board" data-i18n-attr="aria-label:a11y.board" aria-label="Leaderboard" hidden>
+        <div class="sb-podium-wrap">
+          <div class="podium sb-podium" id="podium" role="list" data-i18n-attr="aria-label:a11y.podium" aria-label="Top three players"></div>
+        </div>
+        <section class="sb-ranks" id="sb-ranks" aria-labelledby="sb-ranks-title">
+          <h2 class="sb-eyebrow" id="sb-ranks-title">Ranks 4 to 10</h2>
+          <div class="sb-ranks__body" id="sb-ranks-body">
+            <ol class="lb sb-list" id="sb-list" start="4"></ol>
+          </div>
+        </section>
+        <div class="sb-join-slot" id="sb-join-slot"></div>
+      </section>
+
+      <!-- ROTATE=1: statistics panel -->
+      <section class="sb-view sb-view--stats" id="view-stats" data-i18n-attr="aria-label:a11y.stats" aria-label="Statistics" hidden>
+        <div class="sb-stats-main">
+          <h2 class="sb-eyebrow" data-i18n="stats.title">The numbers so far</h2>
+          <div class="sb-tiles" id="sb-tiles"></div>
+          <div class="sb-rules" id="sb-rules"></div>
+          <ul class="sb-cats" id="sb-cats" role="list"></ul>
+        </div>
+        <div class="sb-join-slot" id="sb-join-slot-stats"></div>
+      </section>
+
+      <!-- EMPTY: no score yet -->
+      <section class="sb-view sb-view--empty" id="view-empty" hidden>
+        <div class="sb-empty__icon" aria-hidden="true"><span data-icon="trophy-fill"></span></div>
+        <h2 class="sb-empty__title" id="sb-empty-title">Be the first to play!</h2>
+        <p class="sb-empty__text" id="sb-empty-text"></p>
+        <div class="sb-empty__qr" id="sb-empty-qr"></div>
+        <p class="sb-url sb-empty__url" id="sb-empty-url"></p>
+      </section>
+
+      <!-- LOADING / ERROR / NOT FOUND -->
+      <section class="sb-view sb-view--status" id="view-status">
+        <div class="sb-status" role="status">
+          <span class="spinner sb-status__spinner" id="sb-status-spinner" aria-hidden="true"></span>
+          <h2 class="sb-status__title" id="sb-status-title">Connecting to the live scoreboard…</h2>
+          <p class="sb-status__text" id="sb-status-text"></p>
+          <a class="btn btn--secondary sb-status__action" id="sb-status-action" href="/" hidden data-i18n="status.home">All events</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="sb-foot">
+      <dl class="sb-counters" id="sb-counters">
+        <div class="sb-counter"><dt class="sb-counter__label" id="sb-players-label">players</dt><dd class="sb-counter__value" id="sb-players">0</dd></div>
+        <div class="sb-counter"><dt class="sb-counter__label" id="sb-games-label">games played</dt><dd class="sb-counter__value" id="sb-games">0</dd></div>
+      </dl>
+      <div class="sb-pager" id="sb-pager" aria-hidden="true" hidden><i data-view="board"></i><i data-view="stats"></i></div>
+      <p class="sb-powered">
+        <span data-i18n="common.powered">Powered by</span>
+        <img class="logo logo--on-dark" src="/shared/img/gravitee-horizontal-on-dark.svg" alt="Gravitee">
+        <img class="logo logo--on-light" src="/shared/img/gravitee-horizontal-on-light.svg" alt="Gravitee">
+      </p>
+    </footer>
+
+    <div class="sb-banner alert alert--warning" id="sb-banner" role="status" hidden>
+      <svg class="sb-icon alert__icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 9a14 14 0 0 1 18 0M6 12.5a9.5 9.5 0 0 1 12 0M9 16a5 5 0 0 1 6 0M12 19.5v.01"/></svg>
+      <div><p class="alert__title" data-i18n="status.lost_title">Connection lost</p><p class="alert__text" data-i18n="status.lost_text">Showing the last known scores. Reconnecting…</p></div>
+    </div>
+  </div>
+
+  <noscript><p class="sb-noscript">This scoreboard needs JavaScript.</p></noscript>
+</body>
+</html>

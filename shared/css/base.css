@@ -1,0 +1,176 @@
+/*
+ * base.css - reset + element defaults + page backgrounds.
+ * Load after tokens.css. Everything is inside cascade layers, so your unlayered CSS always wins.
+ */
+@layer reset, tokens, base, components, utilities;
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; tab-size: 4; }
+  body { min-height: 100vh; min-height: 100dvh; }
+  img, picture, video, canvas, svg { display: block; max-width: 100%; }
+  img, video { height: auto; }
+  input, button, textarea, select { font: inherit; color: inherit; letter-spacing: inherit; }
+  button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; -webkit-tap-highlight-color: transparent; }
+  a { -webkit-tap-highlight-color: transparent; }
+  p, h1, h2, h3, h4, h5, h6 { overflow-wrap: break-word; }
+  ul[role="list"], ol[role="list"] { list-style: none; padding: 0; }
+  table { border-collapse: collapse; }
+  fieldset { border: 0; padding: 0; min-width: 0; }
+  summary { cursor: pointer; }
+  [hidden] { display: none !important; }
+  dialog { color: inherit; }
+}
+
+@layer base {
+  html {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-text);
+    font-size: 100%;
+    line-height: var(--lh-normal);
+    accent-color: var(--brand-solid);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-optical-sizing: auto;
+    scrollbar-color: color-mix(in oklab, var(--fg) 28%, transparent) transparent;
+    scrollbar-width: thin;
+  }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+  body {
+    background: transparent;   /* the page background lives on html + html::before so the aurora shows through */
+    color: var(--fg);
+    font-size: var(--text-base);
+    overflow-x: clip;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    line-height: var(--lh-snug);
+    letter-spacing: var(--tracking-tight);
+    text-wrap: balance;
+    color: var(--fg);
+  }
+  h1 { font-size: var(--text-3xl); line-height: var(--lh-tight); letter-spacing: var(--tracking-display); font-weight: 800; }
+  h2 { font-size: var(--text-2xl); line-height: 1.1; letter-spacing: -0.03em; }
+  h3 { font-size: var(--text-xl); }
+  h4 { font-size: var(--text-lg); }
+  h5 { font-size: var(--text-md); }
+  h6 { font-size: var(--text-base); }
+  p { text-wrap: pretty; }
+  strong, b { font-weight: 650; }
+  small { font-size: var(--text-sm); }
+
+  a { color: var(--brand-text); text-decoration-thickness: 0.08em; text-underline-offset: 0.18em; }
+  a:hover { text-decoration-thickness: 0.14em; }
+
+  hr { border: 0; height: 1px; background: var(--border); margin-block: var(--space-6); }
+
+  code, kbd, samp, pre { font-family: var(--font-mono); font-size: 0.9em; }
+  code {
+    padding: 0.12em 0.4em;
+    border-radius: var(--radius-xs);
+    background: var(--hover);
+    border: 1px solid var(--border);
+  }
+  pre {
+    padding: var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--bg-sunken);
+    border: 1px solid var(--border);
+    overflow: auto;
+    line-height: 1.55;
+  }
+  pre code { padding: 0; background: none; border: 0; }
+
+  /* page behind an open modal does not scroll */
+  html:has(dialog[open]) { overflow: hidden; }
+
+  ::selection { background: color-mix(in oklab, var(--brand-solid) 38%, transparent); color: inherit; }
+
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 3px;
+  }
+
+  img { border-radius: inherit; }
+  svg { overflow: visible; }
+
+  /* --------- page backgrounds: html[data-bg="aurora|grid|plain"] --------- */
+  html::before, html::after { content: none; }
+
+  /* aurora: blurred brand blobs as radial gradients (no filter: blur, GPU friendly, one composited layer) */
+  html[data-bg="aurora"]::before,
+  html:not([data-bg])::before {
+    content: "";
+    position: fixed;
+    inset: -25vmax;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(34vmax 34vmax at 22% 18%, color-mix(in oklab, var(--brand-solid) var(--aurora-strength), transparent), transparent 72%),
+      radial-gradient(30vmax 30vmax at 78% 14%, color-mix(in oklab, var(--accent-solid) var(--aurora-strength), transparent), transparent 72%),
+      radial-gradient(40vmax 40vmax at 64% 86%, color-mix(in oklab, color-mix(in oklab, var(--brand-solid), var(--accent-solid)) var(--aurora-strength), transparent), transparent 72%),
+      radial-gradient(28vmax 28vmax at 14% 82%, color-mix(in oklab, var(--brand-solid) calc(var(--aurora-strength) * 0.6), transparent), transparent 72%);
+    animation: aurora-drift 48s ease-in-out infinite alternate;
+    will-change: transform;
+    contain: strict;
+  }
+  /* fade the aurora into the page bottom so long pages stay calm and text stays on a quiet surface */
+  html[data-bg="aurora"]::after,
+  html:not([data-bg])::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: linear-gradient(180deg, transparent 0%, transparent 45%, color-mix(in oklab, var(--bg) 70%, transparent) 100%);
+  }
+  @keyframes aurora-drift {
+    from { transform: translate3d(-2vmax, -1vmax, 0) rotate(0deg) scale(1); }
+    to   { transform: translate3d(2vmax, 2vmax, 0) rotate(8deg) scale(1.08); }
+  }
+
+  /* grid: hairline grid fading out from a brand glow at the top */
+  html[data-bg="grid"]::before {
+    content: "";
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(60vmax 38vmax at 50% -8%, color-mix(in oklab, var(--brand-solid) calc(var(--aurora-strength) * 0.75), transparent), transparent 70%);
+  }
+  html[data-bg="grid"]::after {
+    content: "";
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: 3rem 3rem;
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, #000 25%, transparent 80%);
+            mask-image: radial-gradient(ellipse 85% 70% at 50% 0%, #000 25%, transparent 80%);
+  }
+  /* plain: nothing but --bg */
+
+  @media (prefers-reduced-motion: reduce) {
+    html::before { animation: none !important; }
+  }
+
+  /* --------- smooth page / view transitions (progressive enhancement) --------- */
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: 0.28s; animation-timing-function: var(--ease-out); }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+  }
+
+  /* --------- forced colours (Windows high contrast) --------- */
+  @media (forced-colors: active) {
+    html::before, html::after { display: none; }
+    :focus-visible { outline-color: Highlight; }
+  }
+}
+
+/* cross-document view transitions (hub -> event page fades): a top-level at-rule, it cannot live inside a layer */
+@view-transition { navigation: auto; }

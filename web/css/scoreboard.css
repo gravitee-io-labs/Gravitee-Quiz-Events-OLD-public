@@ -1,0 +1,535 @@
+/*
+ * scoreboard.css - live scoreboard, /{slug}/scoreboard (phone, desktop, 16:9 TV, portrait TV, 4K).
+ * Unlayered on purpose: it sits on top of the design system (/shared/css/*) and overrides it without specificity fights.
+ *
+ * Two layout modes, one source of truth (the --sb-fit custom property, read by main.js):
+ *   scroll mode (default)  phones, tablets, small windows: normal page, rows at their natural height
+ *   fit mode (--sb-fit: 1)  >= 1280x720, or a tall portrait screen: the page NEVER scrolls, the podium takes the height
+ *                           it is given and as many leaderboard rows as fit are laid out (render.js measures them)
+ */
+
+/* =========================================================================================================
+   Scale: everything is rem based and rem follows the screen, so one design serves 390 px to 4K.
+   16:9 landscape: the smaller of the width- and height-based sizes (identical on 16:9, safe on odd windows).
+   Portrait: follows the long side, so a 1080x1920 TV reads like a 1920x1080 one.
+   ========================================================================================================= */
+@media (orientation: landscape) {
+  html[data-display="tv"] { font-size: clamp(16px, min(0.85vw + 5px, 1.5vh + 5.1px), 64px); }
+}
+@media (orientation: portrait) {
+  html[data-display="tv"] { font-size: clamp(16px, 0.85vmax + 5px, 64px); }
+}
+
+:root {
+  --sb-fit: 0;
+  --sb-pad: var(--gutter);
+  --sb-gap: clamp(0.9rem, 3.4vw, 1.5rem);
+  --sb-qr: clamp(7.5rem, 30vw, 10rem);
+}
+
+.sb {
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.sb-icon {
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  overflow: visible;
+}
+
+/* =========================================================================================================
+   Header
+   ========================================================================================================= */
+.sb-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: calc(0.7rem + env(safe-area-inset-top)) var(--sb-pad) 0.35rem;
+}
+.sb-head__row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; min-inline-size: 0; }
+.sb-brand {
+  min-block-size: 2.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-inline-size: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.sb-brand__mark { inline-size: 2.1rem; block-size: 2.1rem; flex: none; }
+.sb-brand__logo { block-size: 2.1rem; inline-size: auto; max-inline-size: 9rem; object-fit: contain; flex: none; border-radius: 0.4rem; }
+.sb-brand__title {
+  margin: 0;
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: clamp(1.4rem, 6.4vw, 2rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  color: var(--brand-text);
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.sb-event {
+  flex: 1 1 auto;
+  margin: 0;
+  min-inline-size: 0;
+  color: var(--fg-muted);
+  font-size: 0.95rem;
+  line-height: 1.25;
+  overflow: hidden;
+  overflow-wrap: anywhere;                 /* a very long event name never widens the header: two lines, then an ellipsis */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+          line-clamp: 2;
+}
+.sb-live { flex: none; white-space: nowrap; }
+.sb-live[data-state="connecting"] { background: var(--warning-soft); color: var(--warning-text); border-color: color-mix(in oklab, var(--amber) 40%, transparent); }
+.sb-live[data-state="connecting"]::before { background: var(--amber); animation: blink 1s ease-in-out infinite; }
+.sb-live[data-state="closed"] { background: var(--hover); color: var(--fg-muted); border-color: var(--border-strong); }
+.sb-live[data-state="closed"]::before { background: var(--fg-muted); animation: none; }
+/* Connected and showing live data = GREEN (red read as "something is wrong"); amber = connecting, grey = ended */
+.sb-live[data-state="open"] { background: var(--success-soft); color: var(--success-text); border-color: color-mix(in oklab, var(--green) 45%, transparent); }
+.sb-live[data-state="open"]::before { background: var(--green); animation: sb-live-pulse 1.6s ease-out infinite; }
+@keyframes sb-live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--green) 70%, transparent); } 100% { box-shadow: 0 0 0 0.6rem transparent; } }
+.sb-live__poll { display: none; inline-size: 0.95em; block-size: 0.95em; stroke-width: 2.4; }
+.sb-live[data-transport="poll"] .sb-live__poll { display: block; }
+
+.sb-controls {
+  flex: none; margin-inline-start: auto; display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem;
+  min-block-size: 2.75rem;
+  min-inline-size: 11.8rem;            /* room for language + theme + fullscreen, reserved before the script builds them: the header must not grow (layout shift) once the page is alive */
+  transition: opacity 0.4s var(--ease-out);
+}
+.sb-controls .segmented span { min-block-size: 2.75rem; min-inline-size: 2.75rem; padding-inline: 0.7rem; display: grid; place-items: center; font-weight: 700; letter-spacing: 0.04em; }
+.sb-fs[aria-pressed="true"] .sb-fs__enter,
+.sb-fs[aria-pressed="false"] .sb-fs__exit { display: none; }
+
+/* =========================================================================================================
+   Main + views
+   ========================================================================================================= */
+.sb-main { flex: 1 1 auto; min-block-size: 0; display: flex; flex-direction: column; padding: 0.6rem var(--sb-pad) 0.4rem; }
+.sb-main:focus { outline: none; }
+.sb-view { flex: 1 1 auto; min-inline-size: 0; }
+.sb-view.is-entering { animation: sb-in 0.6s var(--ease-out) backwards; }
+@keyframes sb-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+.sb-eyebrow {
+  margin: 0;
+  font-family: var(--font-text);
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+/* ---------------------------------------------------------------------------------------------------------
+   Board view (scroll mode: podium, ranks, join card stacked)
+   --------------------------------------------------------------------------------------------------------- */
+.sb-view--board { display: flex; flex-direction: column; gap: var(--sb-gap); }
+.sb-podium-wrap { display: grid; grid-template-columns: minmax(0, 1fr); justify-items: center; align-items: end; min-inline-size: 0; }
+.sb-podium { --u: clamp(2.4rem, 12vw, 5.5rem); gap: clamp(0.4rem, 2.2vw, 1.5rem); max-inline-size: 52rem; }
+.sb-ranks { display: flex; flex-direction: column; gap: 0.75rem; min-inline-size: 0; }
+.sb-ranks__body { min-block-size: 0; }
+.sb-view--board > .sb-join-slot { min-inline-size: 0; }
+
+/* ---- podium places ---- */
+.sb-place { position: relative; isolation: isolate; }
+.sb-place__card { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; max-inline-size: 100%; min-inline-size: 0; }
+.sb-podium .podium__crown { --icon-size: clamp(1.9rem, 7vw, 3rem); }
+.sb-podium .podium__name { font-size: clamp(0.95rem, 3.9vw, 1.5rem); }
+.sb-podium .podium__score { font-size: clamp(1.45rem, 6.6vw, 2.6rem); }
+.sb-podium .podium__meta { font-size: clamp(0.78rem, 3vw, 0.95rem); }
+.sb-place .avatar--xl { --size: clamp(3.4rem, 15vw, 4.75rem); }
+.sb-place__meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 0.15rem 0.7rem; min-block-size: 1.7em; }
+.sb-place[data-rank="1"]::before {          /* spotlight behind the leader: crown, avatar, name. It fades out before the stats line (contrast) */
+  content: "";
+  position: absolute;
+  inset: -6% -30% 52% -30%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in oklab, var(--gold) 20%, transparent), transparent 74%);
+}
+/* empty place: dashed "?" and a muted invitation. Only the block is faded (the text keeps its AA colour: no opacity on text; the design system's own 0.4 opacity on .is-empty is cancelled) */
+.sb-place.is-empty { opacity: 1; }
+.sb-place.is-empty .podium__avatar { background: transparent; color: var(--fg-muted); box-shadow: 0 0 0 2px var(--border-strong); border: 2px dashed var(--border-strong); }
+.sb-place.is-empty .podium__name { font-weight: 500; color: var(--fg-muted); white-space: normal; text-wrap: balance; line-height: 1.15; }   /* the invitation wraps instead of being cut on a narrow phone */
+.sb-place.is-empty .podium__block { filter: saturate(0.45); opacity: 0.8; }
+.sb[data-status="closed"] .sb-place.is-empty .sb-place__card { visibility: hidden; }   /* final results: no "your name here" invitation */
+.sb-place.is-empty .podium__score,
+.sb-place.is-empty .sb-place__meta { visibility: hidden; }
+
+/* score / answer chips shared by podium and rows */
+.sb-stat { display: inline-flex; align-items: center; gap: 0.25em; font-weight: 650; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sb-stat .icon { --icon-size: 0.95em; }
+.sb-stat--ok { color: var(--success-text); }
+.sb-stat--ko { color: var(--danger-text); }
+.sb-time { color: var(--fg-muted); white-space: nowrap; }
+.sb-time:empty { display: none; }
+.sb-num { font-variant-numeric: tabular-nums; }
+
+/* "just finished" highlight: ring + glow + badge, 6 s (the JS removes the class) */
+.sb-fresh { display: none; }
+.is-fresh .sb-fresh { display: inline-flex; }
+.is-fresh .sb-time { display: none; }
+.sb-fresh.badge { padding-block: 0.1rem; font-size: 0.78em; letter-spacing: 0.04em; text-transform: none; }
+.sb-place.is-fresh .podium__avatar { box-shadow: 0 0 0 4px var(--brand-solid), 0 0 44px 4px var(--brand-glow); animation: sb-pulse 1.3s ease-in-out infinite alternate; }
+.sb-place.is-fresh .podium__score { color: var(--brand-text); }
+@keyframes sb-pulse { from { transform: scale(1); } to { transform: scale(1.06); } }
+
+/* ---- leaderboard rows ---- */
+.sb-list { --row-gap: 0.5rem; gap: var(--row-gap); }
+.sb-row {
+  --rh: var(--row-h, 4.1rem);
+  --f: clamp(0.92rem, calc(var(--rh) * 0.2), 1.6rem);
+  display: grid;
+  grid-template-columns: calc(var(--rh) * 0.5) calc(var(--rh) * 0.5) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0 calc(var(--rh) * 0.2);
+  block-size: var(--row-h, auto);
+  min-block-size: 3.3rem;
+  padding: 0 calc(var(--rh) * 0.3) 0 calc(var(--rh) * 0.24);
+  font-size: var(--f);
+  transition: background-color var(--dur), border-color var(--dur), box-shadow var(--dur);   /* transform is animated by FLIP (WAAPI) */
+}
+.sb-list > .sb-row:nth-child(odd) { background: var(--glass-bg); }
+.sb-list > .sb-row:nth-child(even) { background: color-mix(in oklab, var(--glass-bg) 52%, transparent); }
+.sb-row .lb__rank { inline-size: calc(var(--rh) * 0.5); block-size: calc(var(--rh) * 0.5); font-size: calc(var(--f) * 1.15); }
+.sb-row .avatar { --size: calc(var(--rh) * 0.5); }
+.sb-row__who { display: grid; min-inline-size: 0; gap: 0.12em; }
+.sb-row .lb__name { font-size: calc(var(--f) * 1.45); line-height: 1.15; font-weight: 650; letter-spacing: -0.01em; }
+.sb-row .lb__sub { display: flex; align-items: center; gap: 0.7em; min-inline-size: 0; overflow: hidden; font-size: max(0.78rem, calc(var(--f) * 0.82)); color: var(--fg-muted); white-space: nowrap; }
+.sb-row .lb__score { font-size: calc(var(--f) * 2.15); line-height: 1; min-inline-size: 4.6ch; }
+.sb-row.is-fresh {
+  background: var(--brand-soft-strong);
+  border-color: var(--brand-border);
+  box-shadow: 0 0 0 2px var(--brand-solid), 0 0 42px -8px var(--brand-glow);
+  animation: sb-glow 1.4s ease-in-out infinite alternate;
+}
+.sb-row.is-fresh .lb__score { color: var(--brand-text); }
+@keyframes sb-glow { from { box-shadow: 0 0 0 2px var(--brand-solid), 0 0 18px -8px var(--brand-glow); } to { box-shadow: 0 0 0 2px var(--brand-solid), 0 0 46px -4px var(--brand-glow); } }
+
+.sb-row.is-ghost {
+  grid-template-columns: calc(var(--rh) * 0.5) minmax(0, 1fr);
+  background: transparent !important;
+  border: 1.5px dashed var(--border-strong);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+  color: var(--fg-muted);
+}
+.sb-row.is-ghost .lb__rank { background: transparent; color: var(--fg-muted); }
+.sb-row.is-ghost .lb__name { font-size: calc(var(--f) * 1.15); font-weight: 500; color: var(--fg-muted); }
+
+/* ---- join card (QR) ---- */
+.sb-join { display: flex; align-items: center; gap: clamp(0.9rem, 3vw, 1.5rem); padding: clamp(0.8rem, 2.4vw, 1.25rem); border-radius: var(--radius-xl); }
+.sb-join__qr { flex: none; }
+.sb-join__qr .qr { --qr-size: var(--sb-qr); padding: 0.55rem; border-radius: var(--radius-lg); }
+.sb-join__body { display: grid; gap: 0.35rem; min-inline-size: 0; }
+.sb-join__title { margin: 0; font-size: clamp(1.3rem, 5.4vw, 1.9rem); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1; }
+.sb-join__text { margin: 0; color: var(--fg-muted); font-size: 0.95rem; line-height: 1.35; }
+.sb-url { margin: 0; font-family: var(--font-mono); font-size: 0.9rem; font-weight: 600; color: var(--fg); overflow-wrap: anywhere; }
+.sb-join__cta { justify-self: start; margin-block-start: 0.35rem; }
+
+[data-mode="podium"] .sb-ranks,
+.sb[data-ranks="none"] .sb-ranks { display: none; }
+
+/* ---- stats panel (?rotate=1) ---- */
+.sb-view--stats { display: flex; flex-direction: column; gap: var(--sb-gap); }
+.sb-stats-main { display: flex; flex-direction: column; gap: 1rem; min-inline-size: 0; }
+.sb-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: clamp(0.6rem, 2.4vw, 1.25rem); }
+.sb-tile {
+  position: relative;
+  display: grid;
+  align-content: center;
+  gap: 0.3rem;
+  padding: clamp(0.9rem, 3vw, 1.5rem);
+  border-radius: var(--radius-xl);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--highlight);
+  -webkit-backdrop-filter: blur(10px);
+          backdrop-filter: blur(10px);
+  min-inline-size: 0;
+  container-type: inline-size;       /* the big number sizes itself from the tile: a 6 digit score must not overflow it */
+}
+.sb-tile__icon { position: absolute; inset-block-start: 0.9rem; inset-inline-end: 0.9rem; color: var(--brand-text); --icon-size: 1.5rem; }
+.sb-tile__label { font-size: 0.78rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted); padding-inline-end: 2rem; }
+.sb-tile__value {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: min(clamp(2.3rem, 11vw, 4.5rem), calc(100cqi / (var(--chars, 5) * 0.64)));
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--brand-text);
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.sb-tile__sub { color: var(--fg-muted); font-size: 0.95rem; min-block-size: 1.2em; }
+.sb-rules { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; }
+.sb-rule { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; border-radius: var(--radius-pill); background: var(--glass-bg); border: 1px solid var(--glass-border); font-weight: 600; font-size: 1rem; }
+.sb-rule .icon { color: var(--brand-text); }
+.sb-cats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.sb-cats .chip { font-size: 0.95rem; }
+
+/* ---- empty state: the QR is the star ---- */
+.sb-view--empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 0.9rem; padding-block: 1.25rem; }
+.sb-empty__icon { display: grid; place-items: center; inline-size: 4rem; block-size: 4rem; border-radius: 50%; background: var(--grad-brand-soft); border: 1px solid var(--brand-border); color: var(--brand-text); --icon-size: 1.9rem; box-shadow: 0 10px 40px -14px var(--brand-glow); }
+.sb-empty__title { margin: 0; font-size: clamp(2rem, 9.5vw, 3.6rem); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; max-inline-size: 20ch; }
+.sb-empty__text { margin: 0; color: var(--fg-muted); font-size: clamp(1rem, 4vw, 1.3rem); max-inline-size: 34rem; }
+.sb-empty__qr .qr { --qr-size: min(17rem, 72vw); }
+.sb-empty__url { font-size: clamp(1rem, 4.4vw, 1.5rem); }
+.sb[data-qr="off"] .sb-empty__qr { display: none; }
+.sb[data-status="closed"] .sb-empty__qr,
+.sb[data-status="closed"] .sb-empty__url { display: none; }
+
+/* ---- loading / error / not found ---- */
+.sb-view--status { display: grid; place-items: center; text-align: center; padding-block: 3rem; }
+.sb-status { display: grid; justify-items: center; gap: 0.9rem; max-inline-size: 34rem; }
+.sb-status__spinner { --spinner-size: 2.4rem; inline-size: 2.4rem; block-size: 2.4rem; }
+.sb-status__title { margin: 0; font-size: clamp(1.5rem, 6vw, 2.4rem); font-weight: 800; letter-spacing: -0.03em; }
+.sb-status__text { margin: 0; color: var(--fg-muted); font-size: 1.05rem; }
+.sb-status__text:empty { display: none; }
+
+/* ---- hide the QR when ?qr=0, and for closed events (nobody can play any more) ---- */
+.sb[data-qr="off"] .sb-join-slot,
+.sb[data-status="closed"] .sb-join-slot { display: none; }
+
+/* ---- phones: compact rows so a name and a 4 digit score always fit ---- */
+@media (max-width: 36rem) {
+  .sb-live { padding-inline: 0.7rem; letter-spacing: 0.08em; font-size: 0.7rem; }   /* "Final results" must not squeeze the game title */
+  .sb-row { --f: clamp(0.8rem, 3.5vw, 1rem); --rh: 3.9rem; padding-inline-end: 0.8rem; }
+  .sb-row .lb__name { font-size: calc(var(--f) * 1.32); }
+  .sb-row .lb__sub { font-size: 0.74rem; gap: 0.55em; }
+  .sb-row .lb__score { font-size: calc(var(--f) * 1.9); min-inline-size: 4.3ch; }
+  .sb-place__meta .sb-time { display: none; }
+  .sb-place__meta .sb-fresh { font-size: 0.7rem; }
+}
+
+/* very small phones (320 px): nothing may be cut mid-word */
+@media (max-width: 22.5rem) {
+  .sb-brand { gap: 0.5rem; }
+  .sb-brand__title { font-size: 1.15rem; }
+  .sb-live { padding-inline: 0.6rem; letter-spacing: 0.06em; font-size: 0.68rem; gap: 0.35rem; }
+  .sb-row .sb-time { display: none; }
+}
+
+/* =========================================================================================================
+   Footer: stats strip + powered by
+   ========================================================================================================= */
+.sb-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1.25rem; padding: 0.7rem var(--sb-pad) calc(0.9rem + env(safe-area-inset-bottom)); }
+.sb-counters { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; margin: 0; }
+.sb-counter { display: inline-flex; align-items: baseline; gap: 0.5ch; padding: 0.4rem 1rem; border-radius: var(--radius-pill); background: var(--glass-bg); border: 1px solid var(--glass-border); }
+.sb-counter__label { order: 2; margin: 0; color: var(--fg-muted); font-size: 0.95rem; }
+.sb-counter__value { order: 1; margin: 0; font-family: var(--font-display); font-weight: 800; font-size: 1.4rem; line-height: 1; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+/* no numbers until the first snapshot arrived: "0 players" on a loading screen would be a lie */
+.sb[data-state="loading"] .sb-counters,
+.sb[data-state="error"] .sb-counters,
+.sb[data-state="notfound"] .sb-counters { visibility: hidden; }
+.sb-pager { display: flex; align-items: center; gap: 0.4rem; }
+.sb-pager i { inline-size: 0.5rem; block-size: 0.5rem; border-radius: var(--radius-pill); background: var(--border-strong); transition: inline-size var(--dur-slow) var(--ease-out), background-color var(--dur); }
+.sb-pager i[aria-current] { inline-size: 1.6rem; background: var(--brand-solid); }
+.sb-powered { margin: 0 0 0 auto; display: flex; align-items: center; gap: 0.6rem; color: var(--fg-muted); font-size: 0.82rem; }
+.sb-powered .logo { --logo-h: 1.3rem; opacity: 0.95; }
+
+.sb-banner { position: fixed; inset-inline: var(--sb-pad); inset-block-end: 4.6rem; z-index: var(--z-toast); max-inline-size: 38rem; margin-inline: auto; box-shadow: var(--shadow-lg); }
+.sb-noscript { padding: 2rem; text-align: center; }
+
+/* =========================================================================================================
+   FIT MODE: >= 1280x720 (landscape / desktop / TV) or a tall portrait screen. The page never scrolls.
+   Keep these conditions identical to the comment at the top: they define --sb-fit for main.js.
+   ========================================================================================================= */
+@media (min-width: 1280px) and (min-height: 720px), (min-width: 800px) and (min-height: 1200px) {
+  :root {
+    --sb-fit: 1;
+    --sb-pad: 2.1rem;
+    --sb-gap: 1.6rem;
+    --sb-qr: 10.5rem;
+  }
+  html, body { block-size: 100%; overflow: hidden; }
+  .sb { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; block-size: 100vh; block-size: 100dvh; min-block-size: 0; }
+  .sb-main { padding-block: 0.4rem 0.3rem; overflow: hidden; }
+  .sb-view { block-size: 100%; }
+
+  /* header: one line (the two wrappers dissolve into the grid) */
+  .sb-head { display: grid; grid-template-columns: fit-content(58%) minmax(0, 1fr) auto auto; grid-template-areas: "brand event live controls"; align-items: center; gap: 1.4rem; padding-block: 0.9rem 0.3rem; }
+  .sb-head__row { display: contents; }
+  .sb-brand { grid-area: brand; }
+  .sb-event { grid-area: event; }
+  .sb-live { grid-area: live; }
+  .sb-controls { grid-area: controls; }
+  .sb-brand { gap: 0.9rem; }
+  .sb-brand__mark { inline-size: 2.7rem; block-size: 2.7rem; }
+  .sb-brand__logo { block-size: 2.7rem; max-inline-size: 11rem; }
+  .sb-brand__title { font-size: 2.45rem; }
+  .sb-event { align-self: center; padding-inline-start: 1.4rem; border-inline-start: 1px solid var(--border-strong); font-size: 1.2rem; }
+  .sb-live { font-size: 0.82rem; padding: 0.4rem 1rem; }
+  html.is-idle .sb-controls:not(:has(:focus-visible)) { opacity: 0; pointer-events: none; }   /* a clicked button keeps focus but must not pin the controls: only keyboard focus does */
+  html.is-idle { cursor: none; }
+  html.is-idle * { cursor: none; }
+
+  /* board: stacked (portrait TV / near-square windows): podium, ranks, join */
+  .sb-view--board { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1.08fr) minmax(0, 1fr) auto; grid-template-areas: "podium" "ranks" "join"; gap: var(--sb-gap); }
+  .sb-podium-wrap { grid-area: podium; container-type: size; min-block-size: 0; }
+  .sb-ranks { grid-area: ranks; min-block-size: 0; }
+  .sb-ranks__body { flex: 1 1 0; overflow: hidden; }
+  .sb-view--board > .sb-join-slot { grid-area: join; }
+  .sb[data-mode="podium"] .sb-ranks { display: none; }
+  .sb[data-mode="podium"] .sb-view--board { grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "podium" "join"; }
+  .sb[data-ranks="none"] .sb-view--board { grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "podium" "join"; }
+
+  /* podium sized from the height it is given (container query units) */
+  .sb-podium {
+    --u: clamp(1.6rem, calc((100cqh - 16.8rem) / 3.3), 9rem);
+    max-inline-size: min(64rem, 100%);
+    gap: 1.75rem;
+  }
+  .sb-podium .podium__crown { --icon-size: 3.1rem; }
+  .sb-podium .podium__name { font-size: 1.65rem; }
+  .sb-podium .podium__score { font-size: 3.2rem; }
+  .sb-podium .podium__meta { font-size: 1.05rem; }
+  .sb-place .avatar--xl { --size: 5rem; }
+
+  /* rows: fixed unit, JS decides how many fit and sets --row-h */
+  .sb-list { --row-gap: 0.7rem; }
+  .sb-row { min-block-size: 0; }      /* the height is decided by render.js (--row-h) */
+
+  /* join card */
+  .sb-join { gap: 1.6rem; padding: 1.1rem 1.6rem 1.1rem 1.1rem; }
+  .sb-join__qr .qr { padding: 0.65rem; }
+  .sb-join__title { font-size: 2rem; }
+  .sb-join__text { font-size: 1.1rem; }
+  .sb-url { font-size: 1.05rem; }
+  .sb-join__cta { display: none; }
+  .sb[data-mode="podium"] .sb-join { flex-direction: column; justify-content: center; text-align: center; block-size: 100%; }
+  .sb[data-mode="podium"] .sb-join__body { justify-items: center; }
+  .sb[data-mode="podium"] .sb-join__qr .qr { --qr-size: min(24rem, 38vh); }
+
+  /* stats panel */
+  .sb-view--stats { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; gap: var(--sb-gap); padding-block-start: 0.8rem; }
+  .sb-stats-main { min-block-size: 0; }
+  .sb-tiles { flex: 1 1 0; min-block-size: 0; grid-auto-rows: minmax(0, 1fr); gap: 1.25rem; }
+  .sb-tile { padding: 1.25rem 1.75rem; }
+  .sb-tile__icon { --icon-size: 1.9rem; inset-block-start: 1.15rem; inset-inline-end: 1.4rem; }
+  .sb-tile__label { font-size: 0.95rem; }
+  .sb-tile__value { font-size: min(6.2rem, calc(100cqi / (var(--chars, 5) * 0.64))); }
+  .sb-tile__sub { font-size: 1.3rem; }
+  .sb-rule { font-size: 1.2rem; padding: 0.6rem 1.25rem; }
+  .sb-cats .chip { font-size: 1.1rem; }
+  .sb-eyebrow { font-size: 0.9rem; }
+
+  /* empty state: the QR takes whatever height is left */
+  .sb-view--empty { container-type: size; gap: 0.9rem; padding-block: 0.4rem; }
+  .sb-empty__icon { inline-size: 4rem; block-size: 4rem; --icon-size: 2rem; }
+  .sb-empty__title { font-size: 3.9rem; max-inline-size: 30ch; }
+  .sb-empty__text { font-size: 1.4rem; max-inline-size: 64rem; }
+  .sb-empty__qr .qr { --qr-size: clamp(11rem, calc(100cqh - 18rem), 30rem); }
+  .sb-empty__url { font-size: 1.6rem; }
+
+  /* footer */
+  .sb-foot { padding-block: 0.4rem 0.9rem; }
+  .sb-counter { padding: 0.5rem 1.3rem; }
+  .sb-counter__value { font-size: 1.7rem; }
+  .sb-counter__label { font-size: 1.1rem; }
+  .sb-powered { font-size: 0.95rem; }
+  .sb-powered .logo { --logo-h: 1.5rem; }
+  /* "connection lost": a compact strip in the footer line, between the counters and "Powered by": never on top of the QR or the podium */
+  .sb-banner { inset-block-end: 0.95rem; inset-inline: 25rem; inline-size: auto; max-inline-size: none; margin-inline: auto; padding: 0.55rem 1.2rem; align-items: center; box-shadow: var(--shadow-md); }
+  .sb-banner > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 0.7rem; }
+  .sb-banner .alert__title, .sb-banner .alert__text { font-size: 1rem; }
+}
+
+/* fit mode, portrait / near-square: the event name drops under the brand line */
+@media (min-width: 1280px) and (min-height: 720px) and (max-aspect-ratio: 5/4), (min-width: 800px) and (min-height: 1200px) and (max-aspect-ratio: 5/4) {
+  .sb-head { grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "brand live controls" "event event event"; row-gap: 0.1rem; }
+  .sb-event { padding-inline-start: 0; border-inline-start: 0; }
+  /* portrait TV: the 2x2 tiles are tall, let their content fill them */
+  .sb-tile__value { font-size: min(9rem, calc(100cqi / (var(--chars, 5) * 0.64))); }
+  .sb-tile__label { font-size: 1.15rem; }
+  .sb-tile__sub { font-size: 1.7rem; }
+  .sb-tile__icon { --icon-size: 2.6rem; }
+}
+
+/* fit mode, wide: podium + join on the left, ranks on the right */
+@media (min-width: 1280px) and (min-height: 720px) and (min-aspect-ratio: 5/4) {
+  .sb-view--board {
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+    grid-template-areas: "podium ranks" "podium join";      /* the podium owns the full height, ranks + QR share the right column */
+    column-gap: 3.2rem;
+  }
+  .sb[data-mode="long"] .sb-view--board { grid-template-areas: "podium ranks" "join ranks"; }   /* limit > 10: every pixel of height goes to rows */
+  .sb[data-mode="podium"] .sb-view--board { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "podium join"; }
+  .sb[data-ranks="none"] .sb-view--board { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); grid-template-areas: "podium"; }
+  .sb-view--stats { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 3.2rem; }
+  .sb-view--stats .sb-join { flex-direction: column; justify-content: center; text-align: center; block-size: 100%; }
+  .sb-view--stats .sb-join__body { justify-items: center; }
+  .sb-view--stats .sb-join__qr .qr { --qr-size: min(26rem, 40vh); }
+  .sb-view--stats .sb-join-slot { min-block-size: 0; }
+}
+
+/* short landscape screens (1280x720): trim vertical chrome so the podium keeps its room */
+@media (min-width: 1280px) and (min-height: 720px) and (max-height: 820px) {
+  :root { --sb-qr: 7.8rem; --sb-gap: 1.2rem; }
+  .sb-list { --row-gap: 0.5rem; }
+  .sb-head { padding-block: 0.8rem 0.3rem; }
+  .sb-join { padding: 0.6rem 1.2rem 0.6rem 0.6rem; gap: 1.2rem; }
+  .sb-join__title { font-size: 1.6rem; }
+  .sb-join__text { font-size: 1rem; }
+  .sb-empty__title { font-size: 3.2rem; }
+  .sb-tile__value { font-size: min(4.4rem, calc(100cqi / (var(--chars, 5) * 0.64))); }
+}
+
+/* =========================================================================================================
+   Light theme tuning + forced colors + reduced motion
+   ========================================================================================================= */
+:root[data-theme="light"] .sb-list > .sb-row:nth-child(odd) { background: var(--glass-bg); }
+:root[data-theme="light"] .sb-list > .sb-row:nth-child(even) { background: color-mix(in oklab, var(--glass-bg) 60%, transparent); }
+:root[data-theme="light"] .sb-place[data-rank="1"]::before { background: radial-gradient(closest-side, color-mix(in oklab, var(--gold) 34%, transparent), transparent 72%); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sb-view.is-entering,
+  .sb-place.is-fresh .podium__avatar,
+  .sb-row.is-fresh,
+  .sb-live[data-state="connecting"]::before, .sb-live[data-state="open"]::before { animation: none; }
+}
+@media (forced-colors: active) {
+  .sb-row.is-fresh, .sb-place.is-fresh .podium__avatar { outline: 3px solid Highlight; }
+  .segmented input:checked + span { background: Highlight; color: HighlightText; forced-color-adjust: none; }   /* which language is on */
+  .podium__block { border: 2px solid CanvasText; }                                                                 /* the podium steps are fills: keep their shape */
+}
+
+/* =========================================================================================================
+   Touch devices (iPhone / iPad Safari, Chrome Android, TV browsers that report a coarse pointer)
+   ========================================================================================================= */
+/* viewport-fit=cover: an iPhone in landscape puts the notch / Dynamic Island over the left or right 44-59px of the page. env() is 0 elsewhere. */
+.sb-head, .sb-main, .sb-foot {
+  padding-inline: max(var(--sb-pad), env(safe-area-inset-left, 0px)) max(var(--sb-pad), env(safe-area-inset-right, 0px));
+}
+.sb-banner { inset-inline: max(var(--sb-pad), env(safe-area-inset-left, 0px)) max(var(--sb-pad), env(safe-area-inset-right, 0px)); }
+html, body { touch-action: manipulation; }  /* no double-tap zoom on the board */
+/* the drifting aurora keeps a 2400x3000px layer re-compositing at 60 fps for a drift nobody can see on a phone or a TV stick: same gradient, still */
+@media (hover: none) and (pointer: coarse) {
+  html::before { animation: none; will-change: auto; }
+}

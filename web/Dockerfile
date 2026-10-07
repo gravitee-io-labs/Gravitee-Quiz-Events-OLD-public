@@ -1,23 +1,22 @@
-# Gravitee Quiz Events - admin console (static SPA, hash-routed), nginx.
-# Served under /admin/ so the same container works behind the compose gateway and the ingress
-# with the path preserved. Build context is the REPOSITORY ROOT:
-#   docker build -f admin-console/Dockerfile -t dobl1/quiz-admin-console:2.0.0 .
+# Gravitee Quiz Events - web (hub + event game + scoreboard), static nginx.
+# Build context is the REPOSITORY ROOT:
+#   docker build -f web/Dockerfile -t dobl1/quiz-web:2.0.0 .
 FROM nginx:1.30-alpine
 
-LABEL org.opencontainers.image.title="quiz-admin-console" \
-      org.opencontainers.image.description="Gravitee Quiz Events - admin console"
+LABEL org.opencontainers.image.title="quiz-web" \
+      org.opencontainers.image.description="Gravitee Quiz Events - player web app (hub, event game, scoreboard)"
 
 # Remove the stock nginx welcome page: an app without pages must answer 404, not "Welcome to nginx!".
 RUN rm -rf /usr/share/nginx/html/*
 
 # Static content. Each tree lives in its own directory so dev can bind-mount them one by one.
-COPY admin-console/ /usr/share/nginx/html/admin/
-COPY shared/        /usr/share/nginx/shared/
-COPY assets/        /usr/share/nginx/assets/
+COPY web/    /usr/share/nginx/html/
+COPY shared/ /usr/share/nginx/shared/
+COPY assets/ /usr/share/nginx/assets/
 
 # Container plumbing and build tooling must never be served; drop editor/design leftovers
 # (.psd sources are ~1 MB each, shared/tools is the design-system build kit).
-RUN rm -f /usr/share/nginx/html/admin/Dockerfile /usr/share/nginx/html/admin/Dockerfile.dockerignore /usr/share/nginx/html/admin/nginx.conf /usr/share/nginx/html/admin/docker-entrypoint.sh \
+RUN rm -f /usr/share/nginx/html/Dockerfile /usr/share/nginx/html/Dockerfile.dockerignore /usr/share/nginx/html/nginx.conf /usr/share/nginx/html/docker-entrypoint.sh \
  && rm -rf /usr/share/nginx/shared/tools \
  && rm -f /usr/share/nginx/shared/styleguide.html /usr/share/nginx/shared/js/styleguide.js /usr/share/nginx/shared/css/styleguide.css /usr/share/nginx/shared/README.md \
  && find /usr/share/nginx -name '.DS_Store' -delete \
@@ -27,8 +26,8 @@ RUN rm -f /usr/share/nginx/html/admin/Dockerfile /usr/share/nginx/html/admin/Doc
  && echo "set \$quiz_connect_src \"'self'\";" > /etc/nginx/quiz-runtime.conf \
  && chmod -R a+rX /usr/share/nginx
 
-COPY admin-console/nginx.conf /etc/nginx/conf.d/default.conf
-COPY admin-console/docker-entrypoint.sh /quiz-entrypoint.sh
+COPY web/nginx.conf /etc/nginx/conf.d/default.conf
+COPY web/docker-entrypoint.sh /quiz-entrypoint.sh
 RUN chmod 0755 /quiz-entrypoint.sh \
  && nginx -t
 
@@ -39,7 +38,7 @@ EXPOSE 80
 
 # 127.0.0.1, not "localhost": nginx listens on IPv4 only and alpine resolves localhost to ::1 first.
 HEALTHCHECK --interval=15s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget -q -O /dev/null http://127.0.0.1/admin-health || exit 1
+  CMD wget -q -O /dev/null http://127.0.0.1/health || exit 1
 
 ENTRYPOINT ["/quiz-entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

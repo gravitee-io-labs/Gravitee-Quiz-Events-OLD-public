@@ -1,0 +1,113 @@
+/* Settings tab (admin-console/js/views/settings.js). Unlayered on purpose: it wins over the design system layers. */
+
+.st { max-inline-size: 62rem; }
+.st-alerts:empty { display: none; }
+.st-hint { color: var(--fg-muted); font-size: var(--text-sm); }
+
+/* ---------- cards ---------- */
+.st-card { --gap: var(--space-5); }
+.st-card__head { display: flex; align-items: center; gap: 0.85rem; }
+.st-card__icon { flex: none; display: grid; place-items: center; inline-size: 2.5rem; block-size: 2.5rem; border-radius: var(--radius-md); background: var(--brand-soft); color: var(--brand-text); --icon-size: 1.3rem; }
+.st-card .card__title { font-size: var(--text-md); }
+.st-grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.st-grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 44rem) { .st-grid-2, .st-grid-3 { grid-template-columns: minmax(0, 1fr); } }
+.st-links { gap: var(--space-2); }
+.st .field > .segmented:not(.segmented--block) { justify-self: start; }
+
+/* slider + number */
+.st-rangerow { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: var(--space-4); align-items: center; }
+.st-numwrap { display: flex; align-items: center; gap: 0.4rem; }
+.st-numwrap .input { min-inline-size: 0; }
+.st-unit { color: var(--fg-muted); font-weight: 600; }
+.field__error .icon { flex: none; margin-block-start: 0.1rem; }
+
+/* ---------- scoring simulator ---------- */
+.st-sim { display: grid; gap: var(--space-4); padding: var(--space-5); border-radius: var(--radius-lg); background: var(--bg-sunken); border: 1px solid var(--border); }
+.st-sim__title { display: flex; align-items: center; gap: 0.5rem; font-size: var(--text-base); font-family: var(--font-display); }
+.st-sim__title .icon { color: var(--brand-text); }
+.st-sim__formula { color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.55; }
+.st-sim__formula strong { color: var(--fg); }
+.st-sim__time { color: var(--brand-text); font-weight: 800; font-variant-numeric: tabular-nums; }
+.st-sim__out { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
+@media (max-width: 40rem) { .st-sim__out { grid-template-columns: minmax(0, 1fr); } .st-sim__cell { grid-template-columns: 1fr auto; align-items: baseline; } .st-sim__sub { grid-column: 1 / -1; } }
+.st-sim__cell { display: grid; gap: 0.1rem; padding: 0.75rem 0.95rem; border-radius: var(--radius-md); background: var(--bg-raised); border: 1px solid var(--border); border-inline-start: 3px solid var(--fg-subtle); }
+.st-sim__cell--ok { border-inline-start-color: var(--green); }
+.st-sim__cell--ko { border-inline-start-color: var(--red); }
+.st-sim__label { font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--tracking-wide); text-transform: uppercase; color: var(--fg-muted); }
+.st-sim__value { font-family: var(--font-display); font-size: var(--text-xl); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.st-sim__sub { color: var(--fg-muted); font-size: var(--text-xs); }
+
+/* ---------- category mix ---------- */
+.st-equal { align-items: center; }
+.st-mix { --gap: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; background: var(--bg-sunken); }
+.st-row { display: grid; grid-template-columns: minmax(10rem, 1.1fr) minmax(13rem, 1.5fr) minmax(9.5rem, 0.9fr); gap: var(--space-2) var(--space-5); align-items: center; padding: 0.8rem var(--space-4); }
+.st-row + .st-row { border-block-start: 1px solid var(--border); }
+.st-row.is-zero .st-row__name { opacity: 0.7; }
+.st-row .field__error { grid-column: 1 / -1; }
+.st-row__name { display: flex; align-items: center; gap: 0.7rem; min-inline-size: 0; }
+.st-row__label { font-weight: 650; overflow-wrap: anywhere; }
+.st-dot { flex: none; inline-size: 0.8rem; block-size: 0.8rem; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 3px color-mix(in oklab, var(--c) 28%, transparent); }
+.st-row__ctl { display: grid; grid-template-columns: minmax(0, 1fr) 5.25rem; gap: var(--space-3); align-items: center; }
+.st-row__out { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.6rem; justify-content: flex-end; text-align: end; }
+.st-row__pct { font-family: var(--font-display); font-weight: 800; font-size: var(--text-md); font-variant-numeric: tabular-nums; }
+.st-row__got { color: var(--fg-muted); font-size: var(--text-sm); }
+.st-row__warn { flex-basis: 100%; justify-content: center; }
+.st-mix.is-equal .st-row { grid-template-columns: minmax(10rem, 1fr) auto; }
+.st-mix.is-equal .st-row__ctl { display: none; }
+.st-mix__tools { gap: var(--space-2); }
+.st-total { margin-inline-start: auto; color: var(--fg-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+.st-empty { padding-block: var(--space-8); }
+@media (max-width: 44rem) {
+  .st-row, .st-mix.is-equal .st-row { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .st-row__out { justify-content: flex-start; text-align: start; }
+  .st-row__warn { flex-basis: auto; }
+  .st-total { margin-inline-start: 0; flex-basis: 100%; }
+}
+
+/* ---------- registration: consent ---------- */
+.st-consent { gap: var(--space-3); }
+.st-tabs { inline-size: fit-content; max-inline-size: 100%; }
+.st-cpanel .textarea { min-block-size: 5.5rem; }
+.st-preview-label { display: flex; align-items: center; gap: 0.45rem; margin-block-start: var(--space-2); color: var(--fg-muted); font-size: var(--text-xs); font-weight: 700; letter-spacing: var(--tracking-wide); text-transform: uppercase; }
+.st-consent-preview { padding: var(--space-4); border-radius: var(--radius-lg); border: 1px dashed var(--border-strong); background: var(--bg-sunken); }
+.st-pv { display: grid; gap: var(--space-3); max-inline-size: 28rem; }
+.st-pv__row { display: flex; gap: var(--space-3); }
+.st-pv__ph { flex: 1 1 0; min-inline-size: 0; padding: 0.65rem 0.85rem; border: 1px solid var(--input-border); border-radius: var(--radius-md); background: var(--input-bg); color: var(--fg-subtle); font-size: var(--text-sm); }
+.st-pv .check { pointer-events: none; align-items: flex-start; font-size: var(--text-sm); }
+.st-pv__note { color: var(--fg-muted); font-size: var(--text-xs); }
+.st-pv__none { display: flex; align-items: center; gap: 0.6rem; color: var(--fg-muted); font-size: var(--text-sm); }
+.st-req { color: var(--danger-text); font-weight: 700; }
+
+/* ---------- languages ---------- */
+.st-langs { gap: var(--space-5); }
+
+/* ---------- save bar ---------- */
+.st-bar {
+  position: sticky; inset-block-end: var(--space-3); z-index: var(--z-sticky);
+  display: flex; align-items: center; gap: var(--space-3); padding: 0.7rem 0.8rem 0.7rem 1.1rem;
+  border-radius: var(--radius-lg); border: 1px solid var(--glass-border);
+  background: var(--glass-bg-strong); box-shadow: var(--shadow-lg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%); backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  transition: border-color var(--dur) var(--ease-out);
+}
+.st.is-dirty .st-bar { border-color: var(--brand-border); }
+.st-bar__spacer { flex: 1 1 auto; }
+.st-bar__state { display: inline-flex; align-items: center; gap: 0.55rem; font-size: var(--text-sm); font-weight: 600; color: var(--fg-muted); }
+.st.is-dirty .st-bar__state { color: var(--fg); }
+.st-bar__dot { inline-size: 0.6rem; block-size: 0.6rem; border-radius: 50%; background: var(--fg-subtle); }
+.st-bar__dot.is-on { background: var(--amber); box-shadow: 0 0 0 4px color-mix(in oklab, var(--amber) 28%, transparent); }
+@media (max-width: 40rem) {
+  .st-bar { padding: 0.5rem 0.5rem 0.5rem 0.9rem; gap: var(--space-2); }
+  .st-bar__state { flex: 1 1 auto; min-inline-size: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st-bar__spacer { display: none; }
+  .st-bar .bar-lbl { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .st-bar .btn--ghost { inline-size: var(--control-h); padding: 0; }
+  .st-bar .btn--primary { flex: none; }
+}
+
+.bar-short { display: none; }
+@media (max-width: 40rem) { .bar-long { display: none; } .bar-short { display: inline; } }
+
+/* the stack gap already spaces the page header */
+.st > .page-header { margin-block-end: 0; }

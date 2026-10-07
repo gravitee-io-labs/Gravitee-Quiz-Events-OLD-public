@@ -1,14 +1,20 @@
 #!/bin/sh
-# Gravitee Quiz Events - "admin-console" container entrypoint.
+# Gravitee Quiz Events - "web" container entrypoint.
 #
 # Generates the runtime configuration from the environment, then hands over to the
 # stock nginx entrypoint:
-#   * <runtime dir>/config.js        window.QUIZ_CONFIG = { apiBase: "..." }   (served at /admin/config.js)
+#   * <runtime dir>/config.js        window.QUIZ_CONFIG = { apiBase: "...", publicBaseUrl: "..." }   (served at /config.js)
 #   * /etc/nginx/quiz-runtime.conf   CSP connect-src value (only the API origin if it is not same-origin)
 #
 # API_BASE_URL  default "/api". Either a same-origin path ("/api") or an absolute
 #               http(s) URL ("https://api.example.com/api"). Anything else is rejected
 #               and the container refuses to start (a typo must be loud, not silent).
+# PUBLIC_BASE_URL  optional, unset by default. The public origin the scoreboard QR code and the printed short URL
+#               point to, as seen by the players (e.g. "https://quiz.events.gravitee.io"), for when the page is
+#               opened from another address (an internal URL, a LAN IP, a staging host). Must be an http(s) origin
+#               WITHOUT a path, query or credentials; a trailing "/" is tolerated and dropped. Anything else is
+#               rejected and the container refuses to start. Unset or empty: the clients use location.origin.
+#               Becomes window.QUIZ_CONFIG.publicBaseUrl (read by /shared/js/config.js).
 #
 # The HTML directory is never written to, so it can be a read-only bind mount in dev.
 set -eu
@@ -52,15 +58,42 @@ case "$api" in
     ;;
 esac
 
+# --- validate PUBLIC_BASE_URL (optional) -----------------------------------------------------
+public=""
+if [ -n "${PUBLIC_BASE_URL:-}" ]; then
+  case "$PUBLIC_BASE_URL" in
+    *[![:print:]]*) die "PUBLIC_BASE_URL must not contain control characters or newlines" ;;
+  esac
+  public="$PUBLIC_BASE_URL"
+  while [ "${public%/}" != "$public" ]; do public="${public%/}"; done
+  # scheme://host[:port] and nothing else (no path, query, fragment, userinfo, spaces). Compared in lower case,
+  # like location.origin.
+  public="$(printf '%s' "$public" | tr 'A-Z' 'a-z')"
+  printf '%s' "$public" | grep -Eq '^https?://[a-z0-9]([a-z0-9.-]*[a-z0-9])?(:[0-9]{1,5})?$' \
+    || die "PUBLIC_BASE_URL must be an http(s) origin without a path, e.g. https://quiz.events.gravitee.io (got '$PUBLIC_BASE_URL')"
+  case "$public" in
+    *..*) die "PUBLIC_BASE_URL must not contain '..' (got '$PUBLIC_BASE_URL')" ;;
+  esac
+  public_port="$(printf '%s' "$public" | sed -nE 's#^https?://[^:/]+:([0-9]+)$#\1#p')"
+  if [ -n "$public_port" ] && { [ "$public_port" -lt 1 ] || [ "$public_port" -gt 65535 ]; }; then
+    die "PUBLIC_BASE_URL has an invalid port (got '$PUBLIC_BASE_URL')"
+  fi
+fi
+
 # JSON string escaping (defence in depth: the validation above already excludes these)
-json_api="$(printf '%s' "$api" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')"
+json_escape() { printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'; }
+json_api="$(json_escape "$api")"
+public_field=""
+if [ -n "$public" ]; then
+  public_field=", publicBaseUrl: \"$(json_escape "$public")\""
+fi
 
 # --- write runtime files (atomically) -------------------------------------------------------
 mkdir -p "$RUNTIME_DIR"
 tmp="$RUNTIME_DIR/.config.js.$$"
 {
-  echo "// Generated at container start from API_BASE_URL. Do not edit."
-  printf 'window.QUIZ_CONFIG = { apiBase: "%s" };\n' "$json_api"
+  echo "// Generated at container start from API_BASE_URL / PUBLIC_BASE_URL. Do not edit."
+  printf 'window.QUIZ_CONFIG = { apiBase: "%s"%s };\n' "$json_api" "$public_field"
 } > "$tmp" || die "cannot write $RUNTIME_DIR (read-only filesystem?)"
 chmod 0644 "$tmp"
 mv -f "$tmp" "$RUNTIME_DIR/config.js"
@@ -76,7 +109,7 @@ printf 'set $quiz_connect_src "%s";\n' "$connect_src" > "$tmp" || die "cannot wr
 chmod 0644 "$tmp"
 mv -f "$tmp" "$NGINX_RUNTIME_CONF"
 
-log "apiBase=$api  connect-src=$connect_src"
+log "apiBase=$api  publicBaseUrl=${public:-<unset: location.origin>}  connect-src=$connect_src"
 
 # --- hand over to nginx (through the stock entrypoint when present) ----------------------------
 if [ -x /docker-entrypoint.sh ]; then

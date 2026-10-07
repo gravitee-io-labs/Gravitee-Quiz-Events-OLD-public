@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-bg="aurora">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="Gravitee Quiz Events: pick your event, answer fast and climb the live leaderboard.">
+  <title>Gravitee Quiz Events</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <script src="/shared/js/theme-boot.js"></script>
+  <link rel="preload" href="/shared/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/shared/css/fonts.css">
+  <link rel="stylesheet" href="/shared/css/tokens.css">
+  <link rel="stylesheet" href="/shared/css/base.css">
+  <link rel="stylesheet" href="/shared/css/components.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/hub.css">
+  <script src="/config.js"></script>
+  <script type="module" src="/js/hub.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">Skip to content</a>
+  <div id="app" class="screen">
+    <header class="appbar">
+      <a class="brand" href="/"><img class="brand__mark" src="/shared/img/gravitee-mark.svg" alt="" width="30" height="30"><span class="brand__name">Gravitee Quiz Events</span></a>
+    </header>
+    <main id="main" class="screen__main container" tabindex="-1">
+      <section class="hero hub-hero">
+        <h1 class="hero__title">Gravitee <em>Quiz Events</em></h1>
+      </section>
+      <div class="event-grid hub-grid" aria-hidden="true">
+        <span class="skeleton skeleton--card hub-skeleton"></span>
+        <span class="skeleton skeleton--card hub-skeleton"></span>
+      </div>
+    </main>
+  </div>
+  <noscript><p class="container u-center-text" style="padding-block: 2rem">Gravitee Quiz Events needs JavaScript. Please enable it to play. · Gravitee Quiz Events nécessite JavaScript. Veuillez l’activer pour jouer.</p></noscript>
+</body>
+</html>

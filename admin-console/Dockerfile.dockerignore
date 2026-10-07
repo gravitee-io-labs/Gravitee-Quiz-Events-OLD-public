@@ -1,0 +1,15 @@
+# Ignore rules for `docker build -f admin-console/Dockerfile .` (context = repository root).
+# BuildKit reads "<Dockerfile name>.dockerignore" next to the Dockerfile in preference to a root .dockerignore.
+# The Dockerfile only COPYs admin-console/, shared/ and assets/: everything else (the other apps, backups/
+# with production database dumps, e2e/node_modules, firmware, .git ...) never reaches the build daemon.
+*
+!admin-console
+!shared
+!assets
+
+admin-console/Dockerfile.dockerignore
+**/.DS_Store
+**/node_modules
+shared/tools
+assets/**/*.psd
+assets/**/*.ai

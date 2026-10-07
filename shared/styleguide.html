@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-bg="aurora">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="dark light">
+  <title>Quiz Design System</title>
+  <!-- Page skeleton every app copies (see README): theme-boot first, then the four stylesheets, then one module -->
+  <script src="js/theme-boot.js"></script>
+  <link rel="preload" href="fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/bricolage-grotesque-latin.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/styleguide.css">
+  <script type="module" src="js/styleguide.js"></script>
+</head>
+<body>
+<a class="skip-link" href="#main">Skip to content</a>
+
+<!-- ===================================================================== DOCS MODE ===================================================================== -->
+<div class="sg-docs" id="docs">
+  <header class="appbar sg-bar">
+    <a class="brand" href="#top" aria-label="Design system home">
+      <img class="brand__mark" src="img/gravitee-mark.svg" alt="">
+      <span class="brand__name">Quiz Design System</span>
+    </a>
+    <span class="appbar__spacer"></span>
+    <div class="appbar__actions">
+      <div class="segmented segmented--sm u-hide-sm" role="radiogroup" aria-label="Language" id="sg-lang">
+        <label><input type="radio" name="sg-lang" value="en" checked><span>EN</span></label>
+        <label><input type="radio" name="sg-lang" value="fr"><span>FR</span></label>
+      </div>
+      <div id="sg-theme-slot"></div>
+    </div>
+  </header>
+
+  <div class="sg-layout">
+    <nav class="sg-toc" aria-label="Sections">
+      <p class="u-eyebrow">Foundations</p>
+      <a href="#brand">Brand &amp; theme</a>
+      <a href="#tokens">Tokens</a>
+      <a href="#contrast">Contrast report</a>
+      <a href="#type">Typography</a>
+      <p class="u-eyebrow">Components</p>
+      <a href="#buttons">Buttons</a>
+      <a href="#forms">Forms</a>
+      <a href="#badges">Badges &amp; chips</a>
+      <a href="#navigation">Tabs, menus, paging</a>
+      <a href="#data">Data &amp; tables</a>
+      <a href="#feedback">Feedback</a>
+      <a href="#overlays">Dialogs &amp; toasts</a>
+      <p class="u-eyebrow">Game</p>
+      <a href="#game">Answer buttons &amp; timer</a>
+      <a href="#podium">Podium &amp; leaderboard</a>
+      <a href="#hub">Event cards</a>
+      <p class="u-eyebrow">Reference</p>
+      <a href="#icons">Icons</a>
+      <a href="#screens">Screen compositions</a>
+    </nav>
+
+    <main id="main" class="sg-main">
+
+      <!-- ---------------------------------------------------------------- hero -->
+      <section class="hero" id="top">
+        <span class="hero__eyebrow"><span data-icon="sparkle-fill"></span><span data-i18n="sg.eyebrow">Design system · any brand colour</span></span>
+        <h1 class="hero__title"><span data-i18n="sg.hero_a">Become THE</span> <em id="sg-game-title">API Masters</em>!</h1>
+        <p class="hero__tagline" data-i18n="sg.tagline">One look for every event: pick a brand colour and the whole UI follows, readable in light and dark.</p>
+        <div class="hero__actions">
+          <button class="btn btn--primary btn--lg" type="button"><span data-i18n="sg.play">Play now</span><span data-icon="arrow-right"></span></button>
+          <button class="btn btn--secondary btn--lg" type="button"><span data-icon="trophy"></span><span data-i18n="sg.scoreboard">Scoreboard</span></button>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- brand -->
+      <section class="sg-section" id="brand" aria-labelledby="h-brand">
+        <h2 id="h-brand">Brand &amp; theme</h2>
+        <p class="sg-lead">Everything derives from two colours. Pick a preset or any colour: <code>applyBranding()</code> solves contrast for light and dark.</p>
+        <div class="glass panel stack">
+          <div class="sg-presets" id="sg-presets" role="group" aria-label="Brand presets"></div>
+          <div class="form-grid">
+            <div class="field"><label class="field__label" for="sg-primary">Primary colour</label>
+              <div class="color-input"><input type="color" class="color-input__swatch" id="sg-primary-sw" value="#fc5607" aria-label="Primary colour picker"><input class="input color-input__hex" id="sg-primary" value="#FC5607" maxlength="7" spellcheck="false" autocomplete="off"></div></div>
+            <div class="field"><label class="field__label" for="sg-accent">Accent colour</label>
+              <div class="color-input"><input type="color" class="color-input__swatch" id="sg-accent-sw" value="#ff9a52" aria-label="Accent colour picker"><input class="input color-input__hex" id="sg-accent" value="#FF9A52" maxlength="7" spellcheck="false" autocomplete="off"></div></div>
+            <div class="field"><span class="field__label" id="lbl-bg">Background</span>
+              <div class="segmented" role="radiogroup" aria-labelledby="lbl-bg" id="sg-bg">
+                <label><input type="radio" name="sg-bg" value="aurora" checked><span>Aurora</span></label>
+                <label><input type="radio" name="sg-bg" value="grid"><span>Grid</span></label>
+                <label><input type="radio" name="sg-bg" value="plain"><span>Plain</span></label>
+              </div></div>
+            <div class="field"><span class="field__label" id="lbl-th">Theme</span><div id="sg-theme-seg"></div><p class="field__help">System follows your OS; the event default only applies until you choose.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- tokens -->
+      <section class="sg-section" id="tokens" aria-labelledby="h-tokens">
+        <h2 id="h-tokens">Tokens</h2>
+        <h3>Surfaces &amp; text</h3>
+        <div class="sg-swatches" id="sw-surfaces">
+          <div class="sg-sw" style="--c: var(--bg)"><b>--bg</b><span>page</span></div>
+          <div class="sg-sw" style="--c: var(--bg-raised)"><b>--bg-raised</b><span>cards</span></div>
+          <div class="sg-sw" style="--c: var(--bg-overlay)"><b>--bg-overlay</b><span>menus, dialogs</span></div>
+          <div class="sg-sw" style="--c: var(--bg-sunken)"><b>--bg-sunken</b><span>inputs</span></div>
+          <div class="sg-sw sg-sw--text" style="--c: var(--fg)"><b>--fg</b><span>text</span></div>
+          <div class="sg-sw sg-sw--text" style="--c: var(--fg-muted)"><b>--fg-muted</b><span>secondary</span></div>
+          <div class="sg-sw sg-sw--text" style="--c: var(--fg-subtle)"><b>--fg-subtle</b><span>tertiary</span></div>
+          <div class="sg-sw sg-sw--strip" style="--c: var(--border-strong)"><b>--border-strong</b><span>hairlines</span></div>
+        </div>
+        <h3>Brand roles <small class="u-muted">(solved per theme)</small></h3>
+        <div class="sg-swatches">
+          <div class="sg-sw sg-sw--strip" style="--c: var(--brand)"><b>--brand</b><span>raw admin colour</span></div>
+          <div class="sg-sw" style="--c: var(--brand-solid); --on: var(--on-brand)"><b>--brand-solid</b><span>on: --on-brand</span></div>
+          <div class="sg-sw sg-sw--text" style="--c: var(--brand-text)"><b>--brand-text</b><span>links, accents</span></div>
+          <div class="sg-sw sg-sw--strip" style="--c: var(--brand-accent)"><b>--brand-accent</b><span>raw accent</span></div>
+          <div class="sg-sw" style="--c: var(--accent-solid); --on: var(--on-accent)"><b>--accent-solid</b><span>on: --on-accent</span></div>
+          <div class="sg-sw sg-sw--text" style="--c: var(--accent-text)"><b>--accent-text</b><span>accent text</span></div>
+          <div class="sg-sw sg-sw--strip" style="--c: var(--brand-soft)"><b>--brand-soft</b><span>tints</span></div>
+          <div class="sg-sw sg-sw--strip" style="--c: var(--brand-glow)"><b>--brand-glow</b><span>shadows</span></div>
+        </div>
+        <h3>Answer &amp; status colours <small class="u-muted">(green / red mirror the physical buzzers)</small></h3>
+        <div class="sg-swatches">
+          <div class="sg-sw" style="--c: var(--green); --on: var(--on-green)"><b>--green</b><span>answer · success</span></div>
+          <div class="sg-sw" style="--c: var(--red); --on: var(--on-red)"><b>--red</b><span>answer · danger</span></div>
+          <div class="sg-sw" style="--c: var(--amber); --on: var(--on-amber)"><b>--amber</b><span>warning</span></div>
+          <div class="sg-sw" style="--c: var(--blue); --on: var(--on-blue)"><b>--blue</b><span>info</span></div>
+          <div class="sg-sw" style="--c: var(--gold); --on: var(--on-gold)"><b>--gold</b><span>1st</span></div>
+          <div class="sg-sw" style="--c: var(--silver); --on: var(--on-silver)"><b>--silver</b><span>2nd</span></div>
+          <div class="sg-sw" style="--c: var(--bronze); --on: var(--on-bronze)"><b>--bronze</b><span>3rd</span></div>
+        </div>
+        <div class="grid-3 u-mt-6">
+          <div class="stack stack--sm"><h3>Spacing <small class="u-muted">4pt</small></h3><div class="sg-space" id="sg-space"></div></div>
+          <div class="stack stack--sm"><h3>Radii</h3><div class="sg-radii" id="sg-radii"></div></div>
+          <div class="stack stack--sm"><h3>Shadows</h3><div class="sg-shadows" id="sg-shadows"></div></div>
+        </div>
+        <h3 class="u-mt-6">Motion</h3>
+        <div class="cluster">
+          <button class="btn btn--secondary sg-motion" type="button" data-ease="--ease-out">ease-out</button>
+          <button class="btn btn--secondary sg-motion" type="button" data-ease="--ease-spring">spring</button>
+          <button class="btn btn--secondary sg-motion" type="button" data-ease="--ease-in-out">in-out</button>
+          <span class="u-muted u-text-sm">--dur-fast 140ms · --dur 220ms · --dur-slow 400ms · all collapse under <code>prefers-reduced-motion</code></span>
+        </div>
+        <div class="sg-track" aria-hidden="true"><i id="sg-ball"></i></div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- contrast -->
+      <section class="sg-section" id="contrast" aria-labelledby="h-contrast">
+        <h2 id="h-contrast">Contrast report <small class="u-muted">live, for the current brand and theme</small></h2>
+        <p class="sg-lead">Text pairs need 4.5:1 (3:1 for large text), UI elements 3:1. Switch preset or theme and watch it recompute.</p>
+        <div class="cluster u-mb-4"><span class="badge badge--success" id="cr-pass">0 pass</span><span class="badge badge--danger" id="cr-fail">0 fail</span></div>
+        <div class="table-wrap"><table class="table table--compact" id="cr-table"><thead><tr><th>Pair</th><th>Colour</th><th>On</th><th class="num">Ratio</th><th class="num">Needs</th><th>Result</th></tr></thead><tbody></tbody></table></div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- typography -->
+      <section class="sg-section" id="type" aria-labelledby="h-type">
+        <h2 id="h-type">Typography</h2>
+        <p class="sg-lead"><b>Bricolage Grotesque</b> for display, <b>Inter</b> for text. Fluid scale, tight tracking on large sizes. French accents: Évènement, déjà-vu, œuvre, Çà et là.</p>
+        <div class="glass panel stack sg-type">
+          <div class="sg-row"><code>--text-display</code><p style="font: 800 var(--text-display)/.95 var(--font-display); letter-spacing: var(--tracking-display)">Masters</p></div>
+          <div class="sg-row"><code>--text-4xl</code><p style="font: 800 var(--text-4xl)/1 var(--font-display); letter-spacing: var(--tracking-display)">Quiz night</p></div>
+          <div class="sg-row"><code>--text-3xl / h1</code><h1>Heading one</h1></div>
+          <div class="sg-row"><code>--text-2xl / h2</code><h2>Heading two, Évènement</h2></div>
+          <div class="sg-row"><code>--text-xl / h3</code><h3>Heading three</h3></div>
+          <div class="sg-row"><code>--text-lg</code><p class="u-text-lg">Lead paragraph with <a href="#type">a link</a> and <strong>strong text</strong>.</p></div>
+          <div class="sg-row"><code>--text-base</code><p>Body copy for rules, explanations and descriptions. The quick brown fox jumps over the lazy dog, 0123456789.</p></div>
+          <div class="sg-row"><code>--text-sm / xs</code><p class="u-text-sm u-muted">Secondary text and captions <span class="u-text-xs">· extra small 12px</span></p></div>
+          <div class="sg-row"><code>tabular nums</code><p class="u-tabular u-display u-text-2xl">1 234 · 0 987 · 12 345</p></div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- buttons -->
+      <section class="sg-section" id="buttons" aria-labelledby="h-buttons">
+        <h2 id="h-buttons">Buttons</h2>
+        <div class="glass panel stack">
+          <div class="cluster">
+            <button class="btn btn--primary" type="button">Primary</button>
+            <button class="btn btn--secondary" type="button">Secondary</button>
+            <button class="btn btn--ghost" type="button">Ghost</button>
+            <button class="btn btn--danger" type="button">Danger</button>
+            <button class="btn btn--success" type="button">Success</button>
+            <button class="btn btn--link" type="button">Link button</button>
+          </div>
+          <div class="cluster">
+            <button class="btn btn--primary btn--sm" type="button">Small</button>
+            <button class="btn btn--primary" type="button">Default</button>
+            <button class="btn btn--primary btn--lg" type="button">Large</button>
+            <button class="btn btn--primary btn--xl" type="button">Extra large</button>
+          </div>
+          <div class="cluster">
+            <button class="btn btn--primary" type="button"><span data-icon="plus"></span>With icon</button>
+            <button class="btn btn--secondary" type="button"><span data-icon="download-simple"></span>Export CSV</button>
+            <button class="btn btn--primary btn--icon" type="button" aria-label="Play"><span data-icon="play-fill"></span></button>
+            <button class="btn btn--secondary btn--icon" type="button" aria-label="Settings"><span data-icon="gear-six"></span></button>
+            <button class="btn btn--ghost btn--icon" type="button" aria-label="More"><span data-icon="dots-three"></span></button>
+            <button class="btn btn--danger btn--icon btn--sm" type="button" aria-label="Delete"><span data-icon="trash"></span></button>
+          </div>
+          <div class="cluster">
+            <button class="btn btn--primary is-loading" type="button" aria-busy="true">Loading</button>
+            <button class="btn btn--secondary is-loading" type="button" aria-busy="true">Loading</button>
+            <button class="btn btn--primary" type="button" disabled>Disabled</button>
+            <button class="btn btn--secondary" type="button" disabled>Disabled</button>
+            <button class="btn btn--primary" type="button" id="sg-busy">Click to load</button>
+          </div>
+          <button class="btn btn--primary btn--lg btn--block" type="button"><span data-icon="sparkle-fill"></span>Block button</button>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- forms -->
+      <section class="sg-section" id="forms" aria-labelledby="h-forms">
+        <h2 id="h-forms">Form controls</h2>
+        <form class="glass panel stack stack--lg" id="sg-form" novalidate>
+          <div class="form-grid">
+            <div class="field"><label class="field__label" for="f-name">First name</label><input class="input" id="f-name" placeholder="Ada" autocomplete="off"></div>
+            <div class="field"><label class="field__label" for="f-email">Email <span class="field__optional">required</span></label><input class="input" id="f-email" type="email" placeholder="ada@example.com"><p class="field__help">We only use it to contact winners.</p></div>
+            <div class="field field--invalid"><label class="field__label" for="f-bad">Slug</label><input class="input" id="f-bad" value="Not A Slug!" aria-invalid="true" aria-describedby="f-bad-err"><p class="field__error" id="f-bad-err"><span data-icon="warning-circle"></span>Lowercase letters, digits and dashes only.</p></div>
+            <div class="field"><label class="field__label" for="f-sel">Category</label><select class="select" id="f-sel"><option>LLMs &amp; GenAI</option><option>MCP &amp; Agents</option><option>Gravitee AI</option></select></div>
+            <div class="field"><label class="field__label" for="f-search">With icon</label><div class="input-wrap"><span data-icon="magnifying-glass"></span><input class="input" id="f-search" type="search" placeholder="Search questions…"></div></div>
+            <div class="field"><label class="field__label" for="f-dis">Disabled</label><input class="input" id="f-dis" value="Read only" disabled></div>
+            <div class="field field--full"><label class="field__label" for="f-ta">Question text <span class="field__optional">EN</span></label><textarea class="textarea" id="f-ta" placeholder="Which protocol…?"></textarea></div>
+          </div>
+          <div class="form-grid">
+            <div class="stack stack--sm">
+              <span class="u-eyebrow">Checkbox · radio · switch</span>
+              <label class="check"><input type="checkbox" class="checkbox" checked><span class="check__text">I agree to be contacted<span class="check__hint">Optional consent line from the event settings</span></span></label>
+              <label class="check"><input type="checkbox" class="checkbox"><span class="check__text">Unchecked</span></label>
+              <label class="check"><input type="checkbox" class="checkbox" id="f-ind"><span class="check__text">Indeterminate</span></label>
+              <label class="check"><input type="radio" class="radio" name="r1" checked><span class="check__text">Green is the correct answer</span></label>
+              <label class="check"><input type="radio" class="radio" name="r1"><span class="check__text">Red is the correct answer</span></label>
+              <label class="check"><input type="checkbox" class="switch" role="switch" checked><span class="check__text">Event is live</span></label>
+              <label class="check"><input type="checkbox" class="switch" role="switch"><span class="check__text">Collect phone numbers</span></label>
+            </div>
+            <div class="stack">
+              <div class="field"><span class="field__label" id="lbl-fmt">Segmented</span>
+                <div class="segmented" role="radiogroup" aria-labelledby="lbl-fmt"><label><input type="radio" name="fmt" checked><span>True / False</span></label><label><input type="radio" name="fmt"><span>Two choices</span></label></div></div>
+              <div class="field"><span class="field__label" id="lbl-diff">Brand segmented</span>
+                <div class="segmented segmented--brand" role="radiogroup" aria-labelledby="lbl-diff"><label><input type="radio" name="diff"><span>Easy</span></label><label><input type="radio" name="diff" checked><span>Medium</span></label><label><input type="radio" name="diff"><span>Hard</span></label></div></div>
+              <div class="field"><label class="field__label" for="f-range">Timer <output id="f-range-out">20 s</output></label><input type="range" class="range" id="f-range" min="5" max="120" value="20"></div>
+              <div class="dropzone"><span data-icon="upload-simple" data-icon-size="xl"></span><span><b>Drop a CSV or JSON bundle</b> or click to browse</span></div>
+            </div>
+          </div>
+          <div class="form-actions"><button class="btn btn--ghost" type="reset">Reset</button><button class="btn btn--primary" type="submit">Save changes</button></div>
+        </form>
+      </section>
+
+      <!-- ---------------------------------------------------------------- badges -->
+      <section class="sg-section" id="badges" aria-labelledby="h-badges">
+        <h2 id="h-badges">Badges &amp; chips</h2>
+        <div class="glass panel stack">
+          <div class="cluster">
+            <span class="badge">Neutral</span><span class="badge badge--brand">Brand</span><span class="badge badge--accent">Accent</span><span class="badge badge--success badge--dot">Live</span><span class="badge badge--warning">Draft</span><span class="badge badge--danger">Closed</span><span class="badge badge--info">Info</span><span class="badge badge--solid">Solid</span><span class="badge badge--brand badge--lg"><span data-icon="globe"></span>EN · FR</span>
+          </div>
+          <p class="u-eyebrow">Category chips (colour from <code>--chip</code>, readable whatever the colour)</p>
+          <div class="chips" id="sg-chips"></div>
+          <div class="cluster"><span class="difficulty" data-level="1" aria-label="Easy"></span><span class="u-text-sm u-muted">Easy</span><span class="difficulty" data-level="2" aria-label="Medium"></span><span class="u-text-sm u-muted">Medium</span><span class="difficulty" data-level="3" aria-label="Hard"></span><span class="u-text-sm u-muted">Hard</span>
+            <span class="kbd">⌘</span><span class="kbd">K</span><span class="kbd kbd--green">G</span><span class="kbd kbd--red">R</span>
+            <span class="avatar avatar--sm" style="--hue: 40">AM</span><span class="avatar" style="--hue: 160">JD</span><span class="avatar avatar--lg" style="--hue: 290">SK</span>
+            <span class="avatar-stack"><span class="avatar" style="--hue: 20">LM</span><span class="avatar" style="--hue: 200">PR</span><span class="avatar" style="--hue: 120">TB</span></span></div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- navigation -->
+      <section class="sg-section" id="navigation" aria-labelledby="h-nav">
+        <h2 id="h-nav">Tabs, menus, pagination</h2>
+        <div class="glass panel stack">
+          <div id="sg-tabs-demo">
+            <div class="tabs" role="tablist" aria-label="Event sections">
+              <button class="tabs__tab" role="tab" id="t1" aria-controls="p1" aria-selected="true">General</button>
+              <button class="tabs__tab" role="tab" id="t2" aria-controls="p2" aria-selected="false">Branding</button>
+              <button class="tabs__tab" role="tab" id="t3" aria-controls="p3" aria-selected="false">Questions <span class="tabs__count">48</span></button>
+              <button class="tabs__tab" role="tab" id="t4" aria-controls="p4" aria-selected="false">Results</button>
+            </div>
+            <div class="tabpanel" id="p1" role="tabpanel" aria-labelledby="t1">Name, slug, status, dates and languages. Arrow keys switch tabs.</div>
+            <div class="tabpanel" id="p2" role="tabpanel" aria-labelledby="t2" hidden>Colours, background style, logo and default theme.</div>
+            <div class="tabpanel" id="p3" role="tabpanel" aria-labelledby="t3" hidden>Question pool for this event.</div>
+            <div class="tabpanel" id="p4" role="tabpanel" aria-labelledby="t4" hidden>Players, scores and the leads export.</div>
+          </div>
+          <div class="tabs tabs--pill" role="tablist" aria-label="Pill tabs"><button class="tabs__tab" role="tab" aria-selected="true">All</button><button class="tabs__tab" role="tab" aria-selected="false">Live</button><button class="tabs__tab" role="tab" aria-selected="false">Drafts</button></div>
+          <div class="cluster">
+            <div class="dropdown">
+              <button class="btn btn--secondary" type="button" aria-haspopup="menu" aria-expanded="false" data-dropdown-trigger><span data-icon="dots-three"></span>Actions<span data-icon="caret-down" data-icon-size="sm"></span></button>
+              <div class="menu" role="menu" hidden>
+                <div class="menu__label">Event</div>
+                <button class="menu__item" role="menuitem" type="button"><span data-icon="pencil-simple"></span>Edit<span class="kbd">E</span></button>
+                <button class="menu__item" role="menuitem" type="button"><span data-icon="copy"></span>Duplicate</button>
+                <button class="menu__item" role="menuitem" type="button"><span data-icon="export"></span>Export bundle</button>
+                <hr class="menu__sep">
+                <button class="menu__item menu__item--danger" role="menuitem" type="button"><span data-icon="trash"></span>Delete…</button>
+              </div>
+            </div>
+            <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#navigation">Events</a><a href="#navigation">AI Masters</a><span aria-current="page">Questions</span></nav>
+          </div>
+          <div class="pagination"><span class="pagination__info">Showing 1–20 of 48</span>
+            <div class="pagination__pages"><button class="pagination__btn" type="button" disabled aria-label="Previous"><span data-icon="caret-left"></span></button><button class="pagination__btn" type="button" aria-current="page">1</button><button class="pagination__btn" type="button">2</button><button class="pagination__btn" type="button">3</button><button class="pagination__btn" type="button" aria-label="Next"><span data-icon="caret-right"></span></button></div></div>
+          <div class="toolbar"><div class="input-wrap"><span data-icon="magnifying-glass"></span><input class="input input--sm" placeholder="Search…" aria-label="Search"></div>
+            <select class="select select--sm" aria-label="Category"><option>All categories</option></select>
+            <div class="segmented segmented--sm" role="radiogroup" aria-label="Difficulty"><label><input type="radio" name="tb" checked><span>All</span></label><label><input type="radio" name="tb"><span>Easy</span></label><label><input type="radio" name="tb"><span>Hard</span></label></div>
+            <span class="toolbar__spacer"></span><button class="btn btn--primary btn--sm" type="button"><span data-icon="plus"></span>Add question</button></div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- data -->
+      <section class="sg-section" id="data" aria-labelledby="h-data">
+        <h2 id="h-data">Data, tables, stats</h2>
+        <div class="stats">
+          <div class="stat stat--glow"><div class="stat__head"><span class="stat__label">Players</span><span class="stat__icon"><span data-icon="users-three"></span></span></div><div class="stat__value" id="sg-count">0</div><div class="stat__sub"><span class="badge badge--success">+12%</span> vs. yesterday</div></div>
+          <div class="stat stat--accent"><div class="stat__head"><span class="stat__label">Games completed</span><span class="stat__icon"><span data-icon="flag-checkered"></span></span></div><div class="stat__value">341</div><div class="stat__sub">avg score 1 126</div></div>
+          <div class="stat stat--success"><div class="stat__head"><span class="stat__label">Correct rate</span><span class="stat__icon"><span data-icon="check-circle"></span></span></div><div class="stat__value">68%</div><div class="progress progress--thin" style="--value: 68"><div class="progress__bar"></div></div></div>
+          <div class="stat stat--danger"><div class="stat__head"><span class="stat__label">Hardest question</span><span class="stat__icon"><span data-icon="brain"></span></span></div><div class="stat__value">23%</div><div class="stat__sub">MCP transports</div></div>
+        </div>
+        <div class="table-wrap u-mt-6"><table class="table table--cards">
+          <thead><tr><th scope="col">Rank</th><th scope="col">Player</th><th scope="col">Email</th><th scope="col" class="num">Score</th><th scope="col">Status</th><th scope="col" class="actions"><span class="u-sr-only">Actions</span></th></tr></thead>
+          <tbody>
+            <tr><td data-label="Rank">1</td><td data-label="Player"><div class="cluster" style="flex-wrap:nowrap"><span class="avatar avatar--sm" style="--hue: 30">AL</span><div><div class="cell-title">Ada Lovelace</div><div class="cell-sub">Completed 14:32</div></div></div></td><td data-label="Email">ada@example.com</td><td data-label="Score" class="num">1 340</td><td data-label="Status"><span class="badge badge--success badge--dot">Completed</span></td><td class="actions"><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Details"><span data-icon="eye"></span></button><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Delete"><span data-icon="trash"></span></button></td></tr>
+            <tr class="is-selected"><td data-label="Rank">2</td><td data-label="Player"><div class="cluster" style="flex-wrap:nowrap"><span class="avatar avatar--sm" style="--hue: 200">GH</span><div><div class="cell-title">Grace Hopper</div><div class="cell-sub">Completed 14:41</div></div></div></td><td data-label="Email">grace@example.com</td><td data-label="Score" class="num">1 285</td><td data-label="Status"><span class="badge badge--success badge--dot">Completed</span></td><td class="actions"><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Details"><span data-icon="eye"></span></button><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Delete"><span data-icon="trash"></span></button></td></tr>
+            <tr><td data-label="Rank">3</td><td data-label="Player"><div class="cluster" style="flex-wrap:nowrap"><span class="avatar avatar--sm" style="--hue: 300">AT</span><div><div class="cell-title">Alan Turing</div><div class="cell-sub">In progress</div></div></div></td><td data-label="Email">alan@example.com</td><td data-label="Score" class="num">940</td><td data-label="Status"><span class="badge badge--warning badge--dot">In progress</span></td><td class="actions"><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Details"><span data-icon="eye"></span></button><button class="btn btn--ghost btn--icon btn--sm" type="button" aria-label="Delete"><span data-icon="trash"></span></button></td></tr>
+          </tbody></table></div>
+        <div class="grid-2 u-mt-6">
+          <div class="card"><div class="empty"><div class="empty__icon"><span data-icon="trophy"></span></div><h3 class="empty__title">No scores yet</h3><p class="empty__text">Be the first to play and take the crown. Scores appear here live.</p><div class="empty__actions"><button class="btn btn--primary" type="button"><span data-icon="play-fill"></span>Start playing</button></div></div></div>
+          <div class="card stack"><div class="card__header"><span class="card__title">Skeletons</span><span class="spinner" style="--spinner-size:1.4rem" role="status" aria-label="Loading"></span></div>
+            <div class="cluster" style="flex-wrap:nowrap"><span class="skeleton skeleton--circle" style="inline-size:3rem"></span><div class="u-flex-1"><span class="skeleton skeleton--title"></span><span class="skeleton skeleton--text"></span><span class="skeleton skeleton--text" style="inline-size:70%"></span></div></div>
+            <span class="skeleton skeleton--card"></span></div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- feedback -->
+      <section class="sg-section" id="feedback" aria-labelledby="h-fb">
+        <h2 id="h-fb">Feedback: alerts, progress, countdown</h2>
+        <div class="stack">
+          <div class="alert alert--info" role="status"><span class="alert__icon" data-icon="info-fill"></span><div><p class="alert__title">Heads up</p><p class="alert__text">This event is a draft: only admins can see it.</p></div></div>
+          <div class="alert alert--success" role="status"><span class="alert__icon" data-icon="check-circle-fill"></span><div><p class="alert__title">Imported 48 questions</p><p class="alert__text">2 duplicates skipped, 1 category created.</p></div></div>
+          <div class="alert alert--warning" role="alert"><span class="alert__icon" data-icon="warning-fill"></span><div><p class="alert__title">Bluetooth unavailable</p><p class="alert__text">Use the on-screen buttons or the G / R keys.</p></div></div>
+          <div class="alert alert--danger" role="alert"><span class="alert__icon" data-icon="x-circle-fill"></span><div><p class="alert__title">Could not reach the server</p><p class="alert__text">Retrying… your answers are kept on this device.</p></div><button class="btn btn--ghost btn--sm" type="button">Retry</button></div>
+        </div>
+        <div class="grid-2 u-mt-6">
+          <div class="card stack"><span class="card__title">Progress</span>
+            <div class="progress" role="progressbar" aria-label="Import" aria-valuemin="0" aria-valuemax="100" aria-valuenow="62" style="--value: 62"><div class="progress__bar"></div></div>
+            <div class="progress progress--lg progress--success" style="--value: 80"><div class="progress__bar"></div></div>
+            <div class="progress progress--danger" style="--value: 35"><div class="progress__bar"></div></div>
+            <p class="u-eyebrow">Question steps</p>
+            <div class="steps" style="--total: 15"><i class="is-correct"></i><i class="is-correct"></i><i class="is-wrong"></i><i class="is-correct"></i><i class="is-current"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+          <div class="card stack"><span class="card__title">Countdown ring</span>
+            <div class="cluster" id="sg-rings">
+              <div class="ring ring--lg" data-state="ok" style="--value: 80" role="timer" aria-label="Time left"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">16</span></div>
+              <div class="ring ring--lg" data-state="warn" style="--value: 35"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">7</span></div>
+              <div class="ring ring--lg" data-state="danger" style="--value: 12"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">2</span></div>
+              <div class="ring ring--sm" data-state="ok" style="--value: 60"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">12</span></div>
+            </div>
+            <div class="cluster"><button class="btn btn--secondary btn--sm" type="button" id="sg-ring-run"><span data-icon="timer"></span>Run a 10 s countdown</button>
+              <div class="ring ring--sm" id="sg-ring-live" data-state="ok" style="--value: 100"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">10</span></div></div></div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- overlays -->
+      <section class="sg-section" id="overlays" aria-labelledby="h-ov">
+        <h2 id="h-ov">Dialogs &amp; toasts</h2>
+        <div class="glass panel cluster">
+          <button class="btn btn--secondary" type="button" id="sg-confirm"><span data-icon="question"></span>Confirm dialog</button>
+          <button class="btn btn--danger" type="button" id="sg-danger"><span data-icon="trash"></span>Danger confirm</button>
+          <button class="btn btn--secondary" type="button" id="sg-modal"><span data-icon="copy"></span>Duplicate event (form)</button>
+          <button class="btn btn--secondary btn--sm" type="button" data-toast="success">Success toast</button>
+          <button class="btn btn--secondary btn--sm" type="button" data-toast="error">Error toast</button>
+          <button class="btn btn--secondary btn--sm" type="button" data-toast="warning">Warning toast</button>
+          <button class="btn btn--secondary btn--sm" type="button" data-toast="info">Info toast</button>
+          <button class="btn btn--secondary btn--sm" type="button" id="sg-announce">Announce (aria-live)</button>
+          <button class="btn btn--primary" type="button" id="sg-confetti"><span data-icon="confetti"></span>Confetti + count-up</button>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- game -->
+      <section class="sg-section" id="game" aria-labelledby="h-game">
+        <h2 id="h-game">Answer buttons</h2>
+        <p class="sg-lead">Giant, tactile, colour-coded <em>and</em> shaped (icon + key hint) so they never rely on colour alone. They mirror the physical green and red buzzers.</p>
+        <div class="glass panel stack" id="sg-answers-demo">
+          <div class="answers">
+            <button class="answer answer--green" type="button"><span class="answer__icon" data-icon="check-circle-fill"></span><span class="answer__label">TRUE</span><span class="answer__key">G</span></button>
+            <button class="answer answer--red" type="button"><span class="answer__icon" data-icon="x-circle-fill"></span><span class="answer__label">FALSE</span><span class="answer__key">R</span></button>
+          </div>
+          <div class="answers">
+            <button class="answer answer--green is-correct" type="button" disabled><span class="answer__icon" data-icon="check-circle-fill"></span><span class="answer__label">Model Context Protocol</span></button>
+            <button class="answer answer--red is-dimmed" type="button" disabled><span class="answer__icon" data-icon="x-circle-fill"></span><span class="answer__label">OpenAPI</span></button>
+          </div>
+          <div class="stack stack--sm">
+            <div class="feedback feedback--correct"><span data-icon="check-circle-fill"></span>Correct!<span class="feedback__points">+148</span></div>
+            <div class="feedback feedback--wrong"><span data-icon="x-circle-fill"></span>Not quite. It was TRUE.<span class="feedback__points">+0</span></div>
+            <div class="feedback feedback--timeout"><span data-icon="timer"></span>Time is up!<span class="feedback__points">+0</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- podium -->
+      <section class="sg-section" id="podium" aria-labelledby="h-podium">
+        <h2 id="h-podium">Podium &amp; leaderboard</h2>
+        <div class="glass panel stack stack--lg">
+          <div class="podium" id="sg-podium"></div>
+          <ol class="lb" id="sg-lb"></ol>
+        </div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- hub -->
+      <section class="sg-section" id="hub" aria-labelledby="h-hub">
+        <h2 id="h-hub">Event cards</h2>
+        <p class="sg-lead">Each card re-brands itself with <code>applyBranding(event, {root: card})</code>: three events, three colour sets, one scoped token system.</p>
+        <div class="event-grid" id="sg-events"></div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- icons -->
+      <section class="sg-section" id="icons" aria-labelledby="h-icons">
+        <h2 id="h-icons">Icons <small class="u-muted" id="sg-icon-count"></small></h2>
+        <p class="sg-lead">Phosphor Icons (MIT) in a single cached SVG sprite: <code>icon('name')</code> in JS or <code>&lt;span data-icon="name"&gt;</code> in HTML. Click to copy the name.</p>
+        <div class="field u-mb-4"><div class="input-wrap"><span data-icon="magnifying-glass"></span><input class="input" id="sg-icon-filter" type="search" placeholder="Filter icons…" aria-label="Filter icons"></div></div>
+        <div class="sg-icons" id="sg-icons"></div>
+      </section>
+
+      <!-- ---------------------------------------------------------------- screens -->
+      <section class="sg-section" id="screens" aria-labelledby="h-screens">
+        <h2 id="h-screens">Screen compositions</h2>
+        <p class="sg-lead">Real, responsive reference layouts built only with these components. Open any of them full-screen with <code>?screen=…</code>.</p>
+        <div class="sg-screens">
+          <figure class="sg-device sg-device--phone"><div class="sg-device__bar"><b>Game</b><a href="?screen=game" target="_blank" rel="noopener">?screen=game</a></div><iframe title="Game screen" loading="lazy" data-src="styleguide.html?screen=game"></iframe></figure>
+          <figure class="sg-device sg-device--phone"><div class="sg-device__bar"><b>Results</b><a href="?screen=results" target="_blank" rel="noopener">?screen=results</a></div><iframe title="Results screen" loading="lazy" data-src="styleguide.html?screen=results"></iframe></figure>
+          <figure class="sg-device sg-device--phone"><div class="sg-device__bar"><b>Landing</b><a href="?screen=landing" target="_blank" rel="noopener">?screen=landing</a></div><iframe title="Landing screen" loading="lazy" data-src="styleguide.html?screen=landing"></iframe></figure>
+        </div>
+        <div class="sg-screens sg-screens--wide">
+          <figure class="sg-device sg-device--tv"><div class="sg-device__bar"><b>Scoreboard (TV 1920×1080)</b><a href="?screen=scoreboard" target="_blank" rel="noopener">?screen=scoreboard</a></div><div class="sg-tv"><iframe title="Scoreboard" loading="lazy" data-src="styleguide.html?screen=scoreboard"></iframe></div></figure>
+          <figure class="sg-device sg-device--tv"><div class="sg-device__bar"><b>Hub</b><a href="?screen=hub" target="_blank" rel="noopener">?screen=hub</a></div><div class="sg-tv"><iframe title="Hub" loading="lazy" data-src="styleguide.html?screen=hub" data-w="1440" data-h="900"></iframe></div></figure>
+          <figure class="sg-device sg-device--tv"><div class="sg-device__bar"><b>Admin: questions</b><a href="?screen=admin" target="_blank" rel="noopener">?screen=admin</a></div><div class="sg-tv"><iframe title="Admin" loading="lazy" data-src="styleguide.html?screen=admin" data-w="1440" data-h="900"></iframe></div></figure>
+          <figure class="sg-device sg-device--tv"><div class="sg-device__bar"><b>Admin: branding editor</b><a href="?screen=branding" target="_blank" rel="noopener">?screen=branding</a></div><div class="sg-tv"><iframe title="Branding editor" loading="lazy" data-src="styleguide.html?screen=branding" data-w="1440" data-h="900"></iframe></div></figure>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <img class="logo logo--on-dark" src="img/gravitee-horizontal-on-dark.svg" alt="Gravitee">
+        <img class="logo logo--on-light" src="img/gravitee-horizontal-on-light.svg" alt="Gravitee">
+        <span>Icons: Phosphor (MIT) · Fonts: Bricolage Grotesque &amp; Inter (OFL) · QR: qrcode-generator (MIT)</span>
+      </footer>
+    </main>
+  </div>
+</div>
+
+<!-- ===================================================================== SCREEN MODE (?screen=…) ===================================================================== -->
+<div class="sg-screen" id="screen" hidden></div>
+
+
+<!-- ===================================================================== SCREEN TEMPLATES (reference markup) ===================================================================== -->
+<template id="tpl-appbar">
+  <header class="appbar">
+    <a class="brand" href="#"><img class="brand__mark" src="img/gravitee-mark.svg" alt=""><span class="brand__name" data-bind="game_title">AI Masters</span></a>
+    <span class="appbar__spacer"></span>
+    <div class="appbar__actions" data-slot="actions"></div>
+  </header>
+</template>
+
+<template id="tpl-footer">
+  <footer class="footer">
+    <span data-i18n="common.powered">Powered by</span>
+    <img class="logo logo--on-dark" src="img/gravitee-horizontal-on-dark.svg" alt="Gravitee">
+    <img class="logo logo--on-light" src="img/gravitee-horizontal-on-light.svg" alt="Gravitee">
+  </footer>
+</template>
+
+<template id="tpl-landing">
+  <div class="screen">
+    <div data-slot="appbar"></div>
+    <main class="screen__main screen__main--center container">
+      <section class="hero">
+        <span class="hero__eyebrow"><span data-icon="map-pin"></span><span data-bind="eyebrow">Amsterdam · 7–8 Oct 2026</span></span>
+        <h1 class="hero__title u-rise"><span data-i18n="sg.hero_a">Become THE</span> <em data-bind="hero_em">AI Master</em>!</h1>
+        <p class="hero__tagline u-rise" style="--i: 1" data-bind="tagline">Test your knowledge of LLMs, agents, MCP and AI governance. 15 questions, one winner.</p>
+        <div class="hero__actions u-rise" style="--i: 2">
+          <button class="btn btn--primary btn--xl" type="button"><span data-i18n="sg.play">Play now</span><span data-icon="arrow-right"></span></button>
+          <button class="btn btn--secondary btn--lg" type="button"><span data-icon="trophy"></span><span data-i18n="sg.scoreboard">Scoreboard</span></button>
+        </div>
+        <div class="chips u-rise" style="--i: 3" data-fill="chips"></div>
+      </section>
+      <div class="stats container--narrow u-mx-auto u-w-full">
+        <div class="stat"><div class="stat__head"><span class="stat__label" data-i18n="landing.questions">Questions</span><span class="stat__icon"><span data-icon="list-checks"></span></span></div><div class="stat__value">15</div></div>
+        <div class="stat stat--accent"><div class="stat__head"><span class="stat__label" data-i18n="landing.seconds">Seconds each</span><span class="stat__icon"><span data-icon="timer"></span></span></div><div class="stat__value">20</div></div>
+        <div class="stat stat--success"><div class="stat__head"><span class="stat__label" data-i18n="landing.buzzers">Buzzers or keys</span><span class="stat__icon"><span data-icon="keyboard"></span></span></div><div class="stat__value cluster u-text-2xl"><span class="kbd kbd--green">G</span><span class="kbd kbd--red">R</span></div></div>
+      </div>
+    </main>
+    <div data-slot="footer"></div>
+  </div>
+</template>
+
+<template id="tpl-game">
+  <div class="screen">
+    <div data-slot="appbar"></div>
+    <main class="screen__main container container--narrow">
+      <div class="game-head">
+        <div class="game-head__info">
+          <div class="game-counter"><span data-i18n="game.question">Question</span> 4 <small>/ 15</small></div>
+          <span class="chip" style="--chip: #7C5CFF">MCP &amp; Agents</span>
+        </div>
+        <div class="ring ring--lg" data-state="ok" style="--value: 85" role="timer" aria-label="Time left"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="ring__track" cx="50" cy="50" r="44" pathLength="100"/><circle class="ring__bar" cx="50" cy="50" r="44" pathLength="100"/></svg><span class="ring__label">17</span></div>
+      </div>
+      <div class="steps" style="--total: 15"><i class="is-correct"></i><i class="is-correct"></i><i class="is-wrong"></i><i class="is-current"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <section class="question glass"><p class="question__text" data-bind="question">Which open protocol lets AI agents discover and call external tools in a standard way?</p></section>
+      <div class="screen__bottom screen__bottom-safe">
+        <div class="answers">
+          <button class="answer answer--green" type="button"><span class="answer__icon" data-icon="check-circle-fill"></span><span class="answer__label" data-bind="green">Model Context Protocol</span><span class="answer__key">G</span></button>
+          <button class="answer answer--red" type="button"><span class="answer__icon" data-icon="x-circle-fill"></span><span class="answer__label" data-bind="red">OpenAPI</span><span class="answer__key">R</span></button>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<template id="tpl-results">
+  <div class="screen">
+    <div data-slot="appbar"></div>
+    <main class="screen__main container container--narrow">
+      <section class="score-hero u-mt-4">
+        <span class="score-hero__label" data-i18n="results.score">Your score</span>
+        <span class="score-hero__value" id="res-score">1 340</span>
+        <span class="score-hero__sub"><span class="badge badge--brand badge--lg"><span data-icon="trophy-fill"></span><span data-i18n="results.rank" data-i18n-params='{"rank":7,"total":128}'>Rank 7 of 128</span></span></span>
+      </section>
+      <div class="stats stats--compact">
+        <div class="stat stat--success"><div class="stat__head"><span class="stat__label" data-i18n="results.correct">Correct</span><span class="stat__icon"><span data-icon="check-circle"></span></span></div><div class="stat__value">12</div></div>
+        <div class="stat stat--danger"><div class="stat__head"><span class="stat__label" data-i18n="results.wrong">Wrong</span><span class="stat__icon"><span data-icon="x-circle"></span></span></div><div class="stat__value">2</div></div>
+        <div class="stat"><div class="stat__head"><span class="stat__label" data-i18n="results.unanswered">Unanswered</span><span class="stat__icon"><span data-icon="timer"></span></span></div><div class="stat__value">1</div></div>
+      </div>
+      <div class="cluster cluster--center">
+        <button class="btn btn--primary btn--lg" type="button" data-action="celebrate"><span data-icon="confetti"></span><span data-i18n="results.celebrate">Celebrate</span></button>
+        <button class="btn btn--secondary btn--lg" type="button"><span data-icon="trophy"></span><span data-i18n="sg.scoreboard">Scoreboard</span></button>
+      </div>
+      <section class="stack stack--sm">
+        <h2 class="u-text-xl" data-i18n="results.top">Top players</h2>
+        <ol class="lb" data-fill="lb"></ol>
+      </section>
+      <section class="stack stack--sm">
+        <h2 class="u-text-xl" data-i18n="results.review">Your answers</h2>
+        <article class="review-item" data-state="correct"><span class="review-item__icon" data-icon="check-bold"></span><p class="review-item__q">An LLM predicts the next token from the tokens before it.</p><span class="review-item__points">+148</span><div class="review-item__answers"><span class="chip chip--plain" style="--chip: var(--green)">TRUE</span></div></article>
+        <article class="review-item" data-state="wrong"><span class="review-item__icon" data-icon="x-bold"></span><p class="review-item__q">MCP servers can only run on the same machine as the client.</p><span class="review-item__points">+0</span><div class="review-item__answers"><span class="chip chip--plain" style="--chip: var(--red)">You: TRUE</span><span class="chip chip--plain" style="--chip: var(--green)">Answer: FALSE</span></div><p class="review-item__explain">MCP also supports remote servers over HTTP (Streamable HTTP).</p></article>
+        <article class="review-item" data-state="missed"><span class="review-item__icon" data-icon="timer"></span><p class="review-item__q">Which Gravitee feature caps tokens per consumer?</p><span class="review-item__points">+0</span><div class="review-item__answers"><span class="chip chip--plain" style="--chip: var(--amber)">Time is up</span><span class="chip chip--plain" style="--chip: var(--green)">Token Rate Limit</span></div></article>
+      </section>
+    </main>
+    <div data-slot="footer"></div>
+  </div>
+</template>
+
+<template id="tpl-scoreboard">
+  <div class="screen tv-board">
+    <header class="tv-board__head">
+      <a class="brand" href="#"><img class="brand__mark" src="img/gravitee-mark.svg" alt=""><span class="brand__name tv-board__title" data-bind="game_title_caps">AI MASTERS</span><span class="brand__sep"></span><span class="u-muted tv-board__event" data-bind="event_name">World AI Summit – Amsterdam 2026</span></a>
+      <span class="appbar__spacer"></span>
+      <div class="tv-board__counts u-tabular"><span><b data-bind="players">128</b> <span class="u-muted" data-i18n="board.players">players</span></span><span><b data-bind="games">341</b> <span class="u-muted" data-i18n="board.games">games</span></span></div>
+      <span class="live" data-i18n="board.live">Live</span>
+    </header>
+    <main class="tv-board__main">
+      <section class="tv-board__left">
+        <div class="podium" data-fill="podium"></div>
+        <aside class="tv-join glass"><div data-slot="qr"></div><div class="stack stack--sm"><p class="tv-join__title" data-i18n="board.scan">Scan to play</p><p class="u-muted" data-i18n="board.scan_sub">Open the camera, point at the code, beat the leaderboard.</p><p class="qr-card__url" data-bind="url">quiz.events.gravitee.io/world-ai-summit-2026</p></div></aside>
+      </section>
+      <section class="tv-board__right"><p class="u-eyebrow" data-i18n="board.ranks">Ranks 4 to 10</p><ol class="lb lb--lg" data-fill="lb"></ol></section>
+    </main>
+    <div data-slot="footer"></div>
+  </div>
+</template>
+
+<template id="tpl-hub">
+  <div class="screen">
+    <div data-slot="appbar"></div>
+    <main class="screen__main container">
+      <section class="hero">
+        <span class="hero__eyebrow"><span data-icon="sparkle-fill"></span><span data-i18n="hub.eyebrow">Live events</span></span>
+        <h1 class="hero__title"><span data-i18n="hub.title_a">Pick your</span> <em data-i18n="hub.title_b">arena</em></h1>
+        <p class="hero__tagline" data-i18n="hub.tagline">Quick quizzes, big bragging rights. Choose the event you are attending and play.</p>
+      </section>
+      <div class="event-grid" data-fill="events"></div>
+    </main>
+    <div data-slot="footer"></div>
+  </div>
+</template>
+
+<template id="tpl-admin-shell">
+  <div class="shell">
+    <header class="shell__topbar">
+      <button class="btn btn--ghost btn--icon shell__burger" type="button" data-shell-toggle aria-label="Menu" aria-expanded="false"><span data-icon="list"></span></button>
+      <a class="brand" href="#"><img class="brand__mark" src="img/gravitee-mark.svg" alt=""><span class="brand__name">Quiz Admin</span></a>
+      <span class="brand__sep u-hide-sm"></span>
+      <div class="dropdown u-hide-sm">
+        <button class="btn btn--secondary btn--sm" type="button" aria-haspopup="menu" aria-expanded="false" data-dropdown-trigger><span class="chip chip--plain" style="--chip: #7C5CFF; padding-block: 0.1rem">AI Masters</span>World AI Summit 2026<span data-icon="caret-up-down" data-icon-size="sm"></span></button>
+        <div class="menu" role="menu" hidden><div class="menu__label">Switch event</div><button class="menu__item" role="menuitem" aria-checked="true" type="button"><span data-icon="sparkle"></span>World AI Summit 2026</button><button class="menu__item" role="menuitem" type="button"><span data-icon="plugs-connected"></span>API Days Paris</button><hr class="menu__sep"><button class="menu__item" role="menuitem" type="button"><span data-icon="plus"></span>New event…</button></div>
+      </div>
+      <span class="shell__spacer"></span>
+      <span data-slot="theme"></span>
+      <div class="dropdown dropdown--end"><button class="btn btn--ghost btn--icon" type="button" aria-haspopup="menu" aria-expanded="false" data-dropdown-trigger aria-label="Account"><span class="avatar avatar--sm" style="--hue: 40">AD</span></button>
+        <div class="menu" role="menu" hidden><div class="menu__label">admin</div><button class="menu__item" role="menuitem" type="button"><span data-icon="key"></span>Change password</button><button class="menu__item menu__item--danger" role="menuitem" type="button"><span data-icon="sign-out"></span>Sign out</button></div></div>
+    </header>
+    <aside class="shell__sidebar">
+      <nav class="nav" aria-label="Admin">
+        <p class="nav__section">Workspace</p>
+        <a class="nav__item" href="#"><span data-icon="squares-four"></span>All events<span class="nav__badge">3</span></a>
+        <p class="nav__section">AI Masters</p>
+        <a class="nav__item" href="#" data-nav="overview"><span data-icon="chart-bar"></span>Overview</a>
+        <a class="nav__item" href="#" data-nav="branding"><span data-icon="palette"></span>Branding</a>
+        <a class="nav__item" href="#"><span data-icon="sliders-horizontal"></span>Game rules</a>
+        <a class="nav__item" href="#"><span data-icon="tag"></span>Categories<span class="nav__badge">5</span></a>
+        <a class="nav__item" href="#" data-nav="questions"><span data-icon="question"></span>Questions<span class="nav__badge">48</span></a>
+        <a class="nav__item" href="#"><span data-icon="users-three"></span>Results &amp; leads</a>
+      </nav>
+      <div class="glass panel stack stack--sm" style="margin-top:auto; padding: var(--space-4)"><span class="badge badge--success badge--dot" style="justify-self:start">Live</span><p class="u-text-sm u-muted">quiz.events.gravitee.io/<wbr>world-ai-summit-2026</p><button class="btn btn--secondary btn--sm" type="button"><span data-icon="copy"></span>Copy link</button></div>
+    </aside>
+    <div class="shell__scrim"></div>
+    <main class="shell__main" id="admin-main"><div class="container" data-slot="main"></div></main>
+  </div>
+</template>
+
+<template id="tpl-admin-questions">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#">Events</a><a href="#">AI Masters</a><span aria-current="page">Questions</span></nav>
+  <div class="page-header">
+    <div class="page-header__main"><h1 class="page-header__title">Questions</h1><p class="page-header__sub">The question pool of this event. Players get 15 random questions, weighted by category.</p></div>
+    <div class="page-header__actions"><button class="btn btn--secondary" type="button"><span data-icon="upload-simple"></span>Import CSV</button><button class="btn btn--secondary" type="button"><span data-icon="download-simple"></span>Export</button><button class="btn btn--primary" type="button" data-action="add-question"><span data-icon="plus"></span>Add question</button></div>
+  </div>
+  <div class="stats u-mb-6">
+    <div class="stat stat--glow"><div class="stat__head"><span class="stat__label">Active questions</span><span class="stat__icon"><span data-icon="question"></span></span></div><div class="stat__value">48</div><div class="stat__sub">of 52 total</div></div>
+    <div class="stat stat--accent"><div class="stat__head"><span class="stat__label">Categories</span><span class="stat__icon"><span data-icon="tag"></span></span></div><div class="stat__value">5</div><div class="stat__sub">equal split</div></div>
+    <div class="stat stat--success"><div class="stat__head"><span class="stat__label">Easy / Medium / Hard</span><span class="stat__icon"><span data-icon="chart-bar"></span></span></div><div class="stat__value u-text-2xl">17 · 21 · 10</div></div>
+    <div class="stat stat--danger"><div class="stat__head"><span class="stat__label">Needs review</span><span class="stat__icon"><span data-icon="warning"></span></span></div><div class="stat__value">3</div><div class="stat__sub">missing French text</div></div>
+  </div>
+  <div class="toolbar">
+    <div class="input-wrap"><span data-icon="magnifying-glass"></span><input class="input input--sm" placeholder="Search questions…" aria-label="Search questions"></div>
+    <select class="select select--sm" aria-label="Category"><option>All categories</option><option>LLMs &amp; GenAI</option></select>
+    <div class="segmented segmented--sm" role="radiogroup" aria-label="Difficulty"><label><input type="radio" name="q-diff" checked><span>All</span></label><label><input type="radio" name="q-diff"><span>Easy</span></label><label><input type="radio" name="q-diff"><span>Medium</span></label><label><input type="radio" name="q-diff"><span>Hard</span></label></div>
+    <span class="toolbar__spacer"></span>
+    <span class="u-muted u-text-sm">48 results</span>
+  </div>
+  <div class="table-wrap u-mt-4"><table class="table table--cards"><thead><tr><th scope="col">Question</th><th scope="col">Category</th><th scope="col">Format</th><th scope="col">Level</th><th scope="col">Active</th><th scope="col" class="actions"><span class="u-sr-only">Actions</span></th></tr></thead><tbody data-fill="questions"></tbody></table></div>
+  <div class="pagination"><span class="pagination__info">Showing 1–8 of 48</span><div class="pagination__pages"><button class="pagination__btn" type="button" disabled aria-label="Previous"><span data-icon="caret-left"></span></button><button class="pagination__btn" type="button" aria-current="page">1</button><button class="pagination__btn" type="button">2</button><button class="pagination__btn" type="button">3</button><button class="pagination__btn" type="button" aria-label="Next"><span data-icon="caret-right"></span></button></div></div>
+</template>
+
+<template id="tpl-admin-branding">
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a href="#">Events</a><a href="#">AI Masters</a><span aria-current="page">Branding</span></nav>
+  <div class="page-header">
+    <div class="page-header__main"><h1 class="page-header__title">Branding</h1><p class="page-header__sub">Colours, texts and languages. The preview updates as you type.</p></div>
+    <div class="page-header__actions"><button class="btn btn--ghost" type="button">Discard</button><button class="btn btn--primary" type="button"><span data-icon="floppy-disk"></span>Save changes</button></div>
+  </div>
+  <div class="split">
+    <div class="stack stack--lg">
+      <section class="card stack"><h2 class="card__title">Identity</h2>
+        <div class="form-grid">
+          <div class="field"><label class="field__label" for="b-title">Game title</label><input class="input" id="b-title" value="AI Masters"></div>
+          <div class="field"><label class="field__label" for="b-slug">Slug</label><input class="input input--mono" id="b-slug" value="world-ai-summit-2026"><p class="field__help">quiz.events.gravitee.io/world-ai-summit-2026</p></div>
+          <div class="field field--full"><label class="field__label" for="b-name">Event name</label><input class="input" id="b-name" value="World AI Summit – Amsterdam 2026"></div>
+          <div class="field"><span class="field__label" id="b-lang-l">Languages</span><div class="cluster" role="group" aria-labelledby="b-lang-l"><label class="check"><input type="checkbox" class="checkbox" checked><span class="check__text">English</span></label><label class="check"><input type="checkbox" class="checkbox" checked><span class="check__text">Français</span></label></div></div>
+          <div class="field"><span class="field__label" id="b-status-l">Status</span><div class="segmented segmented--block" role="radiogroup" aria-labelledby="b-status-l"><label><input type="radio" name="b-status"><span>Draft</span></label><label><input type="radio" name="b-status" checked><span>Live</span></label><label><input type="radio" name="b-status"><span>Closed</span></label></div></div>
+        </div></section>
+      <section class="card stack"><h2 class="card__title">Colours &amp; look</h2>
+        <div class="stack stack--sm"><span class="field__label" id="b-presets-l">Presets</span><div class="cluster" id="bp-presets" role="group" aria-labelledby="b-presets-l"></div></div>
+        <div class="form-grid">
+          <div class="field"><label class="field__label" for="bp-primary">Primary</label><div class="color-input"><input type="color" class="color-input__swatch" value="#7c5cff" aria-label="Primary colour picker"><input class="input color-input__hex" id="bp-primary" value="#7C5CFF" maxlength="7" spellcheck="false"></div></div>
+          <div class="field"><label class="field__label" for="bp-accent">Accent</label><div class="color-input"><input type="color" class="color-input__swatch" value="#22d3ee" aria-label="Accent colour picker"><input class="input color-input__hex" id="bp-accent" value="#22D3EE" maxlength="7" spellcheck="false"></div></div>
+          <div class="field"><span class="field__label" id="b-bg-l">Background</span><div class="segmented segmented--block" role="radiogroup" aria-labelledby="b-bg-l" id="bp-bg"><label><input type="radio" name="bp-bg" value="aurora" checked><span><span data-icon="sparkle"></span>Aurora</span></label><label><input type="radio" name="bp-bg" value="grid"><span><span data-icon="table"></span>Grid</span></label><label><input type="radio" name="bp-bg" value="plain"><span>Plain</span></label></div></div>
+          <div class="field"><span class="field__label" id="b-th-l">Default theme</span><div class="segmented segmented--block" role="radiogroup" aria-labelledby="b-th-l"><label><input type="radio" name="bp-th"><span><span data-icon="monitor"></span>System</span></label><label><input type="radio" name="bp-th"><span><span data-icon="sun"></span>Light</span></label><label><input type="radio" name="bp-th" checked><span><span data-icon="moon"></span>Dark</span></label></div></div>
+          <div class="field field--full"><span class="field__label">Logo</span><div class="dropzone"><span data-icon="image" data-icon-size="xl"></span><span><b>Drop a logo</b> (SVG or PNG) or paste an https URL</span></div></div>
+        </div>
+        <div class="alert alert--success" role="status" id="bp-contrast"><span class="alert__icon" data-icon="check-circle-fill"></span><div><p class="alert__title">Accessible colours</p><p class="alert__text">Text and buttons stay readable in light and dark: the UI adjusts shades automatically.</p></div></div></section>
+      <section class="card stack"><h2 class="card__title">Landing texts</h2>
+        <div class="tabs tabs--pill" role="tablist" aria-label="Language"><button class="tabs__tab" role="tab" aria-selected="true">English</button><button class="tabs__tab" role="tab" aria-selected="false">Français</button></div>
+        <div class="form-grid"><div class="field field--full"><label class="field__label" for="b-hero">Headline</label><input class="input" id="b-hero" value="Become THE AI Master!"></div><div class="field field--full"><label class="field__label" for="b-tag">Tagline</label><textarea class="textarea" id="b-tag" style="min-block-size: 5rem">Test your knowledge of LLMs, agents, MCP and AI governance.</textarea></div></div></section>
+    </div>
+    <aside class="split__aside stack">
+      <p class="u-eyebrow">Live preview</p>
+      <div class="preview-frame stack" id="bp-preview" data-brand-scope style="padding: var(--space-5); --gap: var(--space-4)">
+        <div class="cluster cluster--between"><span class="brand"><img class="brand__mark" src="img/gravitee-mark.svg" alt=""><span class="brand__name" data-bind="game_title">AI Masters</span></span><span class="badge badge--brand badge--dot">Live</span></div>
+        <div class="event-card" style="box-shadow: none"><div class="event-card__banner"></div><div class="event-card__body" style="padding-top: var(--space-5)"><span class="event-card__kicker">World AI Summit</span><h3 class="event-card__title">Become THE AI Master!</h3><div class="event-card__meta"><span><span data-icon="map-pin" data-icon-size="sm"></span>Amsterdam</span><span><span data-icon="calendar-blank" data-icon-size="sm"></span>7–8 Oct 2026</span></div></div><div class="event-card__footer"><span class="chip" style="--chip: var(--brand-solid)">15 questions</span><span class="btn btn--primary btn--sm">Play<span data-icon="arrow-right"></span></span></div></div>
+        <div class="answers"><span class="answer answer--green answer--sm"><span class="answer__label">TRUE</span></span><span class="answer answer--red answer--sm"><span class="answer__label">FALSE</span></span></div>
+        <div class="progress" style="--value: 55"><div class="progress__bar"></div></div>
+      </div>
+    </aside>
+  </div>
+</template>
+
+</body>
+</html>

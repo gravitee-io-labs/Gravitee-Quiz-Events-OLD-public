@@ -1,0 +1,343 @@
+/*
+ * tokens.css - design tokens (custom properties only, no selectors that paint anything).
+ *
+ * Layers (declared once here, in this order, so apps can override predictably):
+ *   reset < tokens < base < components < utilities < (your unlayered CSS always wins)
+ *
+ * Theme model
+ *  - <html data-theme="dark|light">   resolved theme (set by theme-boot.js / theme.js). Dark is the default.
+ *  - <html data-bg="aurora|grid|plain"> background style (set by applyBranding from the event branding).
+ *  - <html data-display="tv">         scales the whole UI for big screens (scoreboard).
+ *
+ * Brand model
+ *  - applyBranding() sets --brand and --brand-accent (the raw admin colours) and, per theme, contrast-solved roles
+ *    --brand-solid-d/-l, --on-brand-d/-l, --brand-text-d/-l ... (see js/branding.js). This file maps them to the
+ *    semantic tokens components use: --brand-solid, --on-brand, --brand-text ... according to data-theme.
+ *  - The block between @generated markers holds the static defaults for Gravitee orange so the UI is complete
+ *    before (or without) JavaScript. Regenerate: node shared/tools/gen-default-tokens.mjs --write
+ *  - Any element with [data-brand-scope] re-resolves the brand tokens, so a card can show another event's colours
+ *    (applyBranding(event, {root: card})).
+ */
+@layer reset, tokens, base, components, utilities;
+
+@layer tokens {
+  :root {
+    color-scheme: dark;
+
+    /* ---------- brand inputs (overridden by applyBranding) ---------- */
+    --brand: #FC5607;
+    --brand-accent: #FF9A52;
+    --brand-h: 39;       /* hue of --brand in OKLCH, tints every neutral surface */
+    --tint-c: 0.017;     /* chroma of that tint (0 for grey brands) */
+
+    /* @generated:brand-defaults:start */
+    --brand-solid-d: #FC5607;
+    --brand-solid-l: #F15000;
+    --brand-solid-hover-d: #FF7444;
+    --brand-solid-hover-l: #FF6228;
+    --on-brand-d: #1F0F0A;
+    --on-brand-l: #1F0F0A;
+    --brand-text-d: #FF8056;
+    --brand-text-l: #A73500;
+    --accent-solid-d: #FF9A52;
+    --accent-solid-l: #CF6E1E;
+    --accent-solid-hover-d: #FFB17D;
+    --accent-solid-hover-l: #DE7C31;
+    --on-accent-d: #1F0F0A;
+    --on-accent-l: #1F0F0A;
+    --accent-text-d: #FF9A52;
+    --accent-text-l: #934800;
+    --green-d: #67CD4F;
+    --green-l: #349C10;
+    --green-hover-d: #76DC5E;
+    --green-hover-l: #44AA28;
+    --on-green-d: #1F0F0A;
+    --on-green-l: #1F0F0A;
+    --green-text-d: #67CD4F;
+    --green-text-l: #1E6C00;
+    --red-d: #DB2C27;
+    --red-l: #D42321;
+    --red-hover-d: #CB1316;
+    --red-hover-l: #C4010E;
+    --on-red-d: #FFFFFF;
+    --on-red-l: #FFFFFF;
+    --red-text-d: #FF7E70;
+    --red-text-l: #BC000D;
+    --amber-d: #FAC131;
+    --amber-l: #AB8000;
+    --amber-hover-d: #FFD373;
+    --amber-hover-l: #B98E20;
+    --on-amber-d: #1F0F0A;
+    --on-amber-l: #1F0F0A;
+    --amber-text-d: #FAC131;
+    --amber-text-l: #775800;
+    --blue-d: #60A7FF;
+    --blue-l: #2D74CA;
+    --blue-hover-d: #7CB6FF;
+    --blue-hover-l: #1D66BB;
+    --on-blue-d: #1F0F0A;
+    --on-blue-l: #FFFFFF;
+    --blue-text-d: #60A7FF;
+    --blue-text-l: #0F5CB0;
+    --aurora-strength-d: 27%;
+    --aurora-strength-l: 23%;
+    --bloom-strength-d: 52%;
+    --bloom-strength-l: 50%;
+    /* @generated:brand-defaults:end */
+
+    /* ---------- typography ---------- */
+    --font-display: 'Bricolage Grotesque', 'Bricolage Grotesque Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-text: 'Inter', 'Inter Fallback', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+
+    /* fluid type scale (360px -> 1920px viewport) */
+    --text-xs: clamp(0.75rem, 0.73rem + 0.1vw, 0.8125rem);
+    --text-sm: clamp(0.8125rem, 0.79rem + 0.12vw, 0.9rem);
+    --text-base: clamp(0.9375rem, 0.91rem + 0.15vw, 1.0625rem);
+    --text-md: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+    --text-lg: clamp(1.1875rem, 1.1rem + 0.45vw, 1.5rem);
+    --text-xl: clamp(1.375rem, 1.2rem + 0.8vw, 2rem);
+    --text-2xl: clamp(1.625rem, 1.3rem + 1.4vw, 2.75rem);
+    --text-3xl: clamp(2rem, 1.4rem + 2.6vw, 3.75rem);
+    --text-4xl: clamp(2.5rem, 1.5rem + 4.2vw, 5rem);
+    --text-display: clamp(3rem, 1.6rem + 6.5vw, 8rem);
+
+    --lh-tight: 1.04;
+    --lh-snug: 1.2;
+    --lh-normal: 1.5;
+    --lh-relaxed: 1.65;
+    --tracking-display: -0.028em;
+    --tracking-tight: -0.02em;
+    --tracking-wide: 0.08em;
+
+    /* ---------- spacing (4pt grid) ---------- */
+    --space-0: 0;
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-5: 1.25rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+    --space-10: 2.5rem;
+    --space-12: 3rem;
+    --space-16: 4rem;
+    --space-20: 5rem;
+    --space-24: 6rem;
+    --gutter: clamp(1rem, 0.4rem + 2.4vw, 2.5rem);
+    --container: 72rem;
+    --container-narrow: 40rem;
+    --control-h: 2.75rem;      /* 44px: touch target */
+    --control-h-sm: 2.25rem;   /* dense toolbars; becomes 44px on touch screens (see the coarse-pointer rule below) */
+    --control-h-lg: 3.25rem;
+
+    /* ---------- shape ---------- */
+    --radius-xs: 0.375rem;
+    --radius-sm: 0.625rem;
+    --radius-md: 0.875rem;
+    --radius-lg: 1.25rem;
+    --radius-xl: 1.75rem;
+    --radius-2xl: 2.25rem;
+    --radius-pill: 999px;
+
+    /* ---------- z-index ---------- */
+    --z-base: 0;
+    --z-raised: 10;
+    --z-sticky: 100;
+    --z-dropdown: 200;
+    --z-overlay: 300;
+    --z-modal: 400;
+    --z-toast: 500;
+    --z-max: 9999;
+
+    /* ---------- motion ---------- */
+    --dur-instant: 80ms;
+    --dur-fast: 140ms;
+    --dur: 220ms;
+    --dur-slow: 400ms;
+    --dur-slower: 700ms;
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    /* ---------- neutral surfaces (dark, tinted by the brand hue). Lightness values mirror js/branding.js SURFACE_L ---------- */
+    --bg: oklch(0.155 var(--tint-c) var(--brand-h));
+    --bg-raised: oklch(0.205 var(--tint-c) var(--brand-h));
+    --bg-overlay: oklch(0.24 var(--tint-c) var(--brand-h));
+    --bg-sunken: oklch(0.125 var(--tint-c) var(--brand-h));
+    --fg: oklch(0.975 0.006 var(--brand-h));
+    --fg-soft: oklch(0.92 0.008 var(--brand-h));    /* text over the hero bloom */
+    --fg-muted: oklch(0.83 0.012 var(--brand-h));
+    --fg-subtle: oklch(0.71 0.014 var(--brand-h));
+    --border: color-mix(in oklab, var(--fg) 11%, transparent);
+    --border-strong: color-mix(in oklab, var(--fg) 24%, transparent);
+    --hover: color-mix(in oklab, var(--fg) 7%, transparent);
+    --active: color-mix(in oklab, var(--fg) 11%, transparent);
+    --input-bg: var(--bg-sunken);
+    --input-border: color-mix(in oklab, var(--fg) 52%, var(--input-bg));   /* >= 3:1 vs every surface an input can sit on, dialogs included (WCAG 1.4.11) */
+    --glass-bg: color-mix(in oklab, var(--bg-raised) 78%, transparent);
+    --glass-bg-strong: color-mix(in oklab, var(--bg-overlay) 92%, transparent);
+    --glass-border: color-mix(in oklab, var(--fg) 12%, transparent);
+    --glass-blur: 18px;
+    --highlight: inset 0 1px 0 color-mix(in oklab, white 9%, transparent);
+    --scrim: color-mix(in oklab, black 62%, transparent);
+
+    /* shadows */
+    --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.4);
+    --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4), 0 2px 6px -1px oklch(0 0 0 / 0.3);
+    --shadow-md: 0 4px 14px -2px oklch(0 0 0 / 0.5), 0 2px 4px -2px oklch(0 0 0 / 0.4);
+    --shadow-lg: 0 18px 44px -14px oklch(0 0 0 / 0.65), 0 4px 12px -4px oklch(0 0 0 / 0.4);
+    --shadow-xl: 0 36px 90px -24px oklch(0 0 0 / 0.75), 0 10px 28px -10px oklch(0 0 0 / 0.5);
+
+    /* aurora / background composition */
+    --aurora-strength: var(--aurora-strength-d);
+    --bloom-strength: var(--bloom-strength-d);
+    --grid-line: color-mix(in oklab, var(--fg) 7%, transparent);
+
+    /* gold / silver / bronze (podium, ranks): same in both themes, label colour pairs included */
+    --gold: #FFC83D;
+    --on-gold: #2A1D00;
+    --silver: #C9D1DC;
+    --on-silver: #1B2330;
+    --bronze: #E0955B;
+    --on-bronze: #2A1405;
+
+    /* semantic status aliases */
+    --success: var(--green);
+    --success-text: var(--green-text);
+    --danger: var(--red);
+    --danger-text: var(--red-text);
+    --warning: var(--amber);
+    --warning-text: var(--amber-text);
+    --info: var(--blue);
+    --info-text: var(--blue-text);
+  }
+
+  /* ----- status colours: resolved per theme (they do not depend on a brand scope) ----- */
+  :root {
+    --green: var(--green-d); --green-hover: var(--green-hover-d); --on-green: var(--on-green-d); --green-text: var(--green-text-d);
+    --red: var(--red-d); --red-hover: var(--red-hover-d); --on-red: var(--on-red-d); --red-text: var(--red-text-d);
+    --amber: var(--amber-d); --amber-hover: var(--amber-hover-d); --on-amber: var(--on-amber-d); --amber-text: var(--amber-text-d);
+    --blue: var(--blue-d); --blue-hover: var(--blue-hover-d); --on-blue: var(--on-blue-d); --blue-text: var(--blue-text-d);
+  }
+
+  /* ----- brand roles: resolved per theme AND per [data-brand-scope] ----- */
+  :root,
+  [data-brand-scope] {
+    --brand-solid: var(--brand-solid-d);
+    --brand-solid-hover: var(--brand-solid-hover-d);
+    --on-brand: var(--on-brand-d);
+    --brand-text: var(--brand-text-d);
+    --accent-solid: var(--accent-solid-d);
+    --accent-solid-hover: var(--accent-solid-hover-d);
+    --on-accent: var(--on-accent-d);
+    --accent-text: var(--accent-text-d);
+  }
+
+  /* ----- light theme ----- */
+  :root[data-theme="light"] {
+    color-scheme: light;
+
+    --bg: oklch(0.975 calc(var(--tint-c) * 0.5) var(--brand-h));
+    --bg-raised: oklch(1 0 0);
+    --bg-overlay: oklch(1 0 0);
+    --bg-sunken: oklch(0.955 calc(var(--tint-c) * 0.6) var(--brand-h));
+    --fg: oklch(0.22 0.02 var(--brand-h));
+    --fg-soft: oklch(0.3 0.02 var(--brand-h));
+    --fg-muted: oklch(0.42 0.02 var(--brand-h));
+    --fg-subtle: oklch(0.5 0.02 var(--brand-h));
+    --border: color-mix(in oklab, var(--fg) 12%, transparent);
+    --border-strong: color-mix(in oklab, var(--fg) 28%, transparent);
+    --hover: color-mix(in oklab, var(--fg) 5.5%, transparent);
+    --active: color-mix(in oklab, var(--fg) 9%, transparent);
+    --glass-bg: color-mix(in oklab, white 78%, transparent);
+    --glass-bg-strong: color-mix(in oklab, white 94%, transparent);
+    --glass-border: color-mix(in oklab, var(--fg) 11%, transparent);
+    --highlight: inset 0 1px 0 color-mix(in oklab, white 90%, transparent);
+    --scrim: color-mix(in oklab, oklch(0.2 0.03 var(--brand-h)) 48%, transparent);
+
+    --shadow-xs: 0 1px 2px oklch(0.3 0.04 var(--brand-h) / 0.1);
+    --shadow-sm: 0 1px 2px oklch(0.3 0.04 var(--brand-h) / 0.1), 0 2px 6px -1px oklch(0.3 0.04 var(--brand-h) / 0.08);
+    --shadow-md: 0 4px 14px -2px oklch(0.3 0.04 var(--brand-h) / 0.16), 0 2px 4px -2px oklch(0.3 0.04 var(--brand-h) / 0.1);
+    --shadow-lg: 0 18px 44px -14px oklch(0.3 0.05 var(--brand-h) / 0.28), 0 4px 12px -4px oklch(0.3 0.04 var(--brand-h) / 0.12);
+    --shadow-xl: 0 36px 90px -24px oklch(0.3 0.05 var(--brand-h) / 0.38), 0 10px 28px -10px oklch(0.3 0.04 var(--brand-h) / 0.18);
+
+    --aurora-strength: var(--aurora-strength-l);
+    --bloom-strength: var(--bloom-strength-l);
+    --grid-line: color-mix(in oklab, var(--fg) 8%, transparent);
+
+    --green: var(--green-l); --green-hover: var(--green-hover-l); --on-green: var(--on-green-l); --green-text: var(--green-text-l);
+    --red: var(--red-l); --red-hover: var(--red-hover-l); --on-red: var(--on-red-l); --red-text: var(--red-text-l);
+    --amber: var(--amber-l); --amber-hover: var(--amber-hover-l); --on-amber: var(--on-amber-l); --amber-text: var(--amber-text-l);
+    --blue: var(--blue-l); --blue-hover: var(--blue-hover-l); --on-blue: var(--on-blue-l); --blue-text: var(--blue-text-l);
+  }
+  :root[data-theme="light"],
+  :root[data-theme="light"] [data-brand-scope] {
+    --brand-solid: var(--brand-solid-l);
+    --brand-solid-hover: var(--brand-solid-hover-l);
+    --on-brand: var(--on-brand-l);
+    --brand-text: var(--brand-text-l);
+    --accent-solid: var(--accent-solid-l);
+    --accent-solid-hover: var(--accent-solid-hover-l);
+    --on-accent: var(--on-accent-l);
+    --accent-text: var(--accent-text-l);
+  }
+
+  /* ----- decorative brand derivations (color-mix: automatic for any brand colour, re-resolved per scope).
+         *-soft tokens are opaque tints of the card surface (--bg-raised) so text on them has a predictable contrast ----- */
+  :root,
+  [data-brand-scope] {
+    --brand-soft: color-mix(in oklab, var(--brand-solid) 14%, var(--bg-raised));
+    --brand-soft-strong: color-mix(in oklab, var(--brand-solid) 24%, var(--bg-raised));
+    --brand-border: color-mix(in oklab, var(--brand-solid) 45%, transparent);
+    --brand-glow: color-mix(in oklab, var(--brand-solid) 55%, transparent);
+    --accent-soft: color-mix(in oklab, var(--accent-solid) 14%, var(--bg-raised));
+    --accent-glow: color-mix(in oklab, var(--accent-solid) 50%, transparent);
+    --focus: var(--brand-text);
+    --grad-brand: linear-gradient(135deg, var(--brand-solid), color-mix(in oklab, var(--brand-solid) 40%, var(--accent-solid)));
+    --grad-brand-soft: linear-gradient(135deg, var(--brand-soft-strong), var(--accent-soft));
+    --grad-text: linear-gradient(100deg, var(--brand-text) 10%, var(--accent-text) 90%);
+    --shadow-glow: 0 0 0 1px var(--brand-border), 0 10px 40px -12px var(--brand-glow);
+  }
+
+  /* status soft fills (alerts, badges): the status colour tinted into the card surface. Opaque on purpose: text on them
+     has a predictable background even when the badge sits on the aurora. */
+  :root {
+    --success-soft: color-mix(in oklab, var(--green) 15%, var(--bg-raised));
+    --danger-soft: color-mix(in oklab, var(--red) 15%, var(--bg-raised));
+    --warning-soft: color-mix(in oklab, var(--amber) 16%, var(--bg-raised));
+    --info-soft: color-mix(in oklab, var(--blue) 15%, var(--bg-raised));
+  }
+
+  /* ----- spring easing where linear() is supported ----- */
+  @supports (transition-timing-function: linear(0, 1)) {
+    :root {
+      --ease-spring: linear(0, 0.009, 0.035 2.1%, 0.141, 0.281 6.7%, 0.723 12.9%, 0.938 16.7%, 1.017, 1.077, 1.121, 1.149 24.3%, 1.159, 1.163, 1.161, 1.154 29.9%, 1.129 32.8%, 1.051 39.6%, 1.017 43.1%, 0.991, 0.977 51%, 0.974 53.8%, 0.975 57.1%, 0.997 69.8%, 1.003 76.9%, 1);
+    }
+  }
+
+  /* ----- reduced motion: everything collapses to (almost) instant ----- */
+  @media (prefers-reduced-motion: reduce) {
+    :root {
+      --dur-instant: 0.01ms;
+      --dur-fast: 0.01ms;
+      --dur: 0.01ms;
+      --dur-slow: 0.01ms;
+      --dur-slower: 0.01ms;
+    }
+  }
+
+  /* ----- big screens: scale the whole UI (everything is rem based) ----- */
+  html[data-display="tv"] {
+    font-size: clamp(16px, 0.85vw + 5px, 40px);
+    --container: 120rem;
+  }
+}
+
+/* touch screens: small controls grow to the 44px target (WCAG 2.5.5 / Apple HIG); dense desktop toolbars keep the 36px size */
+@layer tokens {
+  @media (pointer: coarse) {
+    :root { --control-h-sm: 2.75rem; }
+  }
+}

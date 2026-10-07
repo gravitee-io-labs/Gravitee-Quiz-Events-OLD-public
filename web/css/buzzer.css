@@ -1,0 +1,199 @@
+/*
+ * buzzer.css - header button + dialog of the buzzer module (web/js/buzzer/*).
+ * Built only on the design system tokens (shared/css/tokens.css) and components; load it after the shared stylesheets.
+ * Unlayered on purpose (it must win over the system layers); every selector is namespaced `.buzzer-*`.
+ */
+
+/* ---------------------------------------------------------------------------------------------
+   Header button: icon + status dot.   data-level: none | one | both | off (unsupported)
+   The dot never relies on colour alone: hollow = none, half = one buzzer, full = both, diamond = low battery.
+   --------------------------------------------------------------------------------------------- */
+.buzzer-btn { position: relative; }
+.buzzer-btn__dot {
+  position: absolute;
+  inset-block-start: 0.45rem;
+  inset-inline-end: 0.45rem;
+  box-sizing: border-box;
+  inline-size: 0.8rem;
+  block-size: 0.8rem;
+  border-radius: 50%;
+  border: 2px solid var(--fg-muted);
+  background: var(--bg);
+  box-shadow: 0 0 0 2px var(--bg);
+  pointer-events: none;
+  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), transform var(--dur) var(--ease-out);
+}
+.buzzer-btn[data-level="one"] .buzzer-btn__dot { border-color: var(--green); background: linear-gradient(90deg, var(--green) 50%, var(--bg) 50%); }
+.buzzer-btn[data-level="both"] .buzzer-btn__dot { border-color: var(--green); background: var(--green); }
+.buzzer-btn[data-level="off"] .buzzer-btn__dot { display: none; }
+.buzzer-btn[data-reconnecting="true"] .buzzer-btn__dot { border-color: var(--amber); animation: buzzer-blink 1s ease-in-out infinite; }
+.buzzer-btn[data-warn="true"] .buzzer-btn__dot { border-color: var(--amber); background: var(--amber); border-radius: 0.2rem; transform: rotate(45deg); }
+.buzzer-btn.is-pressed { animation: buzzer-ping 600ms var(--ease-out); }
+.buzzer-btn[data-level="off"] { color: var(--fg-muted); }
+
+/* ---------------------------------------------------------------------------------------------
+   Dialog
+   --------------------------------------------------------------------------------------------- */
+/* The shared reset zeroes every margin (`* { margin: 0 }`), which also removes the UA centring of <dialog>:
+   centre it again here (phones keep the bottom-sheet rule of the design system). */
+@media (min-width: 36.01rem) {
+  .buzzer-dialog { inline-size: min(40rem, calc(100vw - 2rem)); margin: auto; }
+}
+.buzzer-dialog__head { display: flex; align-items: flex-start; gap: var(--space-3); min-inline-size: 0; }
+.buzzer-dialog .dialog__header { align-items: flex-start; }
+
+.buzzer-support { margin: 0; }
+
+.buzzer-list { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+
+.buzzer-row {
+  --_c: var(--green);
+  --_on: var(--on-green);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "swatch main" "actions actions";
+  gap: var(--space-3) var(--space-4);
+  align-items: start;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  background: var(--bg-raised);
+  transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+}
+.buzzer-row[data-color="red"] { --_c: var(--red); --_on: var(--on-red); }
+.buzzer-row[data-state="connected"] {
+  border-color: color-mix(in oklab, var(--_c) 55%, var(--border-strong));
+  background: color-mix(in oklab, var(--_c) 8%, var(--bg-raised));
+}
+.buzzer-row[data-state="reconnecting"] { border-color: color-mix(in oklab, var(--amber) 55%, var(--border-strong)); }
+
+.buzzer-row__swatch {
+  grid-area: swatch;
+  display: grid;
+  place-items: center;
+  inline-size: 3rem;
+  block-size: 3rem;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--_c) 28%, var(--bg-sunken));
+  color: var(--fg-muted);
+  --icon-size: 1.5rem;
+  transition: background-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+}
+.buzzer-row[data-state="connected"] .buzzer-row__swatch {
+  background: var(--_c);
+  color: var(--_on);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--_c) 24%, transparent), 0 6px 18px -6px var(--_c);
+}
+
+.buzzer-row__main { grid-area: main; display: grid; gap: var(--space-1); min-inline-size: 0; }
+.buzzer-row__title { display: flex; align-items: center; flex-wrap: wrap; gap: 0.25rem 0.75rem; }
+.buzzer-row__name { font-family: var(--font-display); font-weight: 700; font-size: var(--text-lg); letter-spacing: var(--tracking-tight); line-height: var(--lh-snug); }
+.buzzer-row__status { display: flex; align-items: flex-start; gap: 0.25rem 0.5rem; color: var(--fg-muted); font-size: var(--text-sm); line-height: 1.4; }
+.buzzer-row__status .status-dot { margin-block-start: 0.4em; }
+.buzzer-row__state { min-inline-size: 0; }
+.buzzer-row[data-state="connected"] .buzzer-row__status { color: var(--fg); font-weight: 600; }
+.buzzer-row__hint { color: var(--fg-muted); font-size: var(--text-sm); }
+.buzzer-row__msg { display: flex; align-items: flex-start; gap: 0.5rem; margin-block-start: var(--space-1); font-size: var(--text-sm); color: var(--fg); }
+.buzzer-row__msg .icon { margin-block-start: 0.1rem; --icon-size: 1.1rem; }
+.buzzer-row__msg[data-tone="error"] { color: var(--danger-text); }
+.buzzer-row__msg[data-tone="info"] { color: var(--info-text); }
+
+.buzzer-row__actions { grid-area: actions; display: flex; }
+.buzzer-row__action { inline-size: 100%; }
+.buzzer-row__action[aria-busy="true"] .icon { animation: buzzer-spin 0.9s linear infinite; }
+
+.buzzer-battery {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 0.35rem;
+  margin-inline-start: auto;
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.buzzer-battery .icon { --icon-size: 1.25rem; }
+.buzzer-battery[data-low="true"] { color: var(--warning-text); font-weight: 700; }
+
+/* test-press indicator: lights up in the buzzer's colour for a moment when its button is pressed */
+.buzzer-pad {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 0.6rem;
+  margin-block-start: var(--space-2);
+  padding: 0.4rem 0.9rem 0.4rem 0.5rem;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-pill);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.buzzer-pad__led {
+  flex: none;
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--bg-sunken);
+}
+.buzzer-pad.is-active {
+  border-style: solid;
+  border-color: var(--_c);
+  background: color-mix(in oklab, var(--_c) 18%, var(--bg-raised));
+  color: var(--fg);
+  font-weight: 650;
+}
+.buzzer-pad.is-active .buzzer-pad__led {
+  border-color: var(--_c);
+  background: var(--_c);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--_c) 30%, transparent), 0 0 16px var(--_c);
+  animation: buzzer-pop var(--dur-slow) var(--ease-spring);
+}
+
+.buzzer-keys {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.6rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--bg-sunken);
+  color: var(--fg-muted);
+  font-size: var(--text-sm);
+}
+.buzzer-keys__icon { --icon-size: 1.25rem; }
+.buzzer-keys__text { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.35rem 0.75rem; }
+.buzzer-keys__pair { display: inline-flex; align-items: center; gap: 0.4rem; color: var(--fg); font-weight: 600; }
+
+.buzzer-dialog .dialog__footer .btn[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+.buzzer-dialog .dialog__footer .btn[aria-busy="true"] .icon { animation: buzzer-pop 0.7s ease-in-out infinite alternate; }
+
+/* wide enough: the action sits to the right of the row */
+@media (min-width: 36.01rem) {
+  .buzzer-row { grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "swatch main actions"; align-items: center; }
+  .buzzer-row__action { inline-size: auto; min-inline-size: 9.5rem; }
+}
+
+@keyframes buzzer-blink { 50% { opacity: 0.35; } }
+@keyframes buzzer-spin { to { transform: rotate(360deg); } }
+@keyframes buzzer-pop { from { transform: scale(0.6); } to { transform: scale(1); } }
+@keyframes buzzer-ping {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--brand-solid) 60%, transparent); }
+  100% { box-shadow: 0 0 0 0.9rem transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .buzzer-btn.is-pressed,
+  .buzzer-btn[data-reconnecting="true"] .buzzer-btn__dot,
+  .buzzer-pad.is-active .buzzer-pad__led,
+  .buzzer-row__action[aria-busy="true"] .icon,
+  .buzzer-dialog .dialog__footer .btn[aria-busy="true"] .icon { animation: none; }
+  .buzzer-btn__dot, .buzzer-row, .buzzer-row__swatch, .buzzer-pad { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .buzzer-btn__dot { border-color: CanvasText; background: Canvas; }
+  .buzzer-btn[data-level="both"] .buzzer-btn__dot { background: Highlight; }
+  .buzzer-pad.is-active { border-color: Highlight; }
+}
