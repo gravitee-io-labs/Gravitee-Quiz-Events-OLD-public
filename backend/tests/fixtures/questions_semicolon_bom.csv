@@ -1,0 +1,4 @@
+﻿category;difficulty;question_text_en;question_text_fr;correct_answer;green_label_en;green_label_fr;red_label_en;red_label_fr;explanation_en;explanation_fr;question_format;is_active
+IA générative;1;Is a token always a word?;Un token est-il toujours un mot ?;red;TRUE;Vrai;FALSE;Faux;A token can be a word piece.;Un token peut être un morceau de mot.;true_false;true
+IA générative;2;Which proxy protects model calls?;Quel proxy protège les appels aux modèles ?;green;LLM Proxy;Proxy LLM;MCP Proxy;Proxy MCP;The LLM Proxy.;Le proxy LLM.;two_choices;true
+Gouvernance;3;Guardrails run before the model;Les garde-fous s'exécutent avant le modèle;green;TRUE;Vrai;FALSE;Faux;;;;false

@@ -1,146 +1,86 @@
 """
-Scoreboard router - real-time scoreboard with SSE support
+Scoreboard routes (docs/ARCHITECTURE.md section 5.1), mounted under ``/api/events``:
+
+    GET /api/events/{slug}/scoreboard?limit=10          top games (names "First L.", no e-mail / phone)
+    GET /api/events/{slug}/scoreboard/stream?limit=10   Server-Sent Events, live
+
+Draft events are 404 unless the request carries an admin token; ``closed`` events keep serving their
+final results. The stream never holds a database session: the event is resolved with a short-lived one
+and the data comes from ``services.broadcaster.hub`` (one refresh task per event, shared by all viewers).
+The REST handler closes its session before returning (see the note in ``routers/public_events.py``).
 """
 import logging
-import asyncio
-from typing import List
-from fastapi import APIRouter, Depends, Request
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
+from app import database
+from app.auth import optional_admin
 from app.database import get_db
-from app.models import GameSession
-from app.schemas import ScoreboardEntry
+from app.schemas import ScoreboardEntry, TokenData
+from app.services import broadcaster
+from app.services.events import get_event_or_404
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# Store for SSE clients and update flag
-scoreboard_clients = []
-scoreboard_update_event = asyncio.Event()
+MAX_LIMIT = broadcaster.MAX_ENTRIES
+SSE_HEADERS = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 
 
-@router.get("/", response_model=List[ScoreboardEntry])
-async def get_scoreboard(
-    limit: int = 10,
-    db: Session = Depends(get_db)
+@router.get(
+    "/{slug}/scoreboard",
+    response_model=list[ScoreboardEntry],
+    summary="Scoreboard (top games)",
+    responses={404: {"description": "Unknown event, or a draft event without an admin token"}},
+)
+def get_scoreboard(
+    slug: str,
+    limit: int = Query(10, ge=1, le=MAX_LIMIT, description="Number of rows (1-100)"),
+    db: Session = Depends(get_db),
+    admin: Optional[TokenData] = Depends(optional_admin),
 ):
-    """
-    Get top scoreboard entries
-    """
-    logger.info(f"Fetching scoreboard (limit={limit})")
-    
-    # Get top scores
-    sessions = db.query(GameSession).filter(
-        GameSession.status == "completed"
-    ).order_by(
-        GameSession.total_score.desc(),
-        GameSession.completed_at.asc()
-    ).limit(limit).all()
-    
-    scoreboard = []
-    for rank, session in enumerate(sessions, 1):
-        player = session.player
-        scoreboard.append(ScoreboardEntry(
-            rank=rank,
-            player_name=f"{player.first_name} {player.last_name}",
-            email=player.email,
-            phone_number=player.phone_number,
-            score=session.total_score,
-            correct_answers=session.correct_answers,
-            wrong_answers=session.wrong_answers,
-            completed_at=session.completed_at
-        ))
-    
-    logger.info(f"Retrieved {len(scoreboard)} scoreboard entries")
-    return scoreboard
+    try:
+        event = get_event_or_404(db, slug, is_admin=admin is not None)
+        return broadcaster.fetch_entries(db, event.id, limit)
+    finally:
+        db.close()
 
 
-def get_scoreboard_data(db: Session):
-    """
-    Helper function to fetch scoreboard data
-    """
-    sessions = db.query(GameSession).filter(
-        GameSession.status == "completed"
-    ).order_by(
-        GameSession.total_score.desc(),
-        GameSession.completed_at.asc()
-    ).limit(10).all()
-    
-    scoreboard = []
-    for rank, session in enumerate(sessions, 1):
-        player = session.player
-        scoreboard.append({
-            "rank": rank,
-            "player_name": f"{player.first_name} {player.last_name}",
-            "email": player.email,
-            "phone_number": player.phone_number,
-            "score": session.total_score,
-            "correct_answers": session.correct_answers,
-            "wrong_answers": session.wrong_answers,
-            "completed_at": session.completed_at.isoformat() if session.completed_at else None
-        })
-    
-    return scoreboard
+def _resolve_event_id(slug: str, is_admin: bool) -> int:
+    """Event lookup with a short-lived session (closed before the stream starts)."""
+    with database.SessionLocal() as db:
+        return get_event_or_404(db, slug, is_admin=is_admin).id
 
 
-def notify_scoreboard_update():
-    """
-    Notify all connected clients that scoreboard has been updated
-    """
-    scoreboard_update_event.set()
-    logger.info("Scoreboard update event triggered")
-
-
-@router.get("/stream")
-async def scoreboard_stream(request: Request, db: Session = Depends(get_db)):
-    """
-    Server-Sent Events (SSE) endpoint for real-time scoreboard updates
-    """
-    async def event_generator():
-        """
-        Generator function that yields SSE events
-        """
-        logger.info("New SSE client connected to scoreboard")
-        
-        import json
-        
-        # Send initial scoreboard data
-        scoreboard = get_scoreboard_data(db)
-        yield f"data: {json.dumps(scoreboard)}\n\n"
-        
-        # Keep connection alive and wait for updates
-        try:
-            while True:
-                if await request.is_disconnected():
-                    logger.info("SSE client disconnected from scoreboard")
-                    break
-                
-                # Wait for update event or timeout after 30 seconds (for keepalive)
-                try:
-                    await asyncio.wait_for(scoreboard_update_event.wait(), timeout=30.0)
-                    scoreboard_update_event.clear()
-                    
-                    # Fetch and send updated scoreboard
-                    scoreboard = get_scoreboard_data(db)
-                    yield f"data: {json.dumps(scoreboard)}\n\n"
-                    logger.info("Sent updated scoreboard to client")
-                    
-                except asyncio.TimeoutError:
-                    # Send keepalive comment to prevent connection timeout
-                    yield f": keepalive\n\n"
-                
-        except asyncio.CancelledError:
-            logger.info("SSE client connection cancelled")
-            raise
-    
+@router.get(
+    "/{slug}/scoreboard/stream",
+    summary="Scoreboard live stream (SSE)",
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "description": (
+                'Each message is `data: {"entries":[ScoreboardEntry...],"total_players":N,"total_games":M}`, '
+                "sent on connect and whenever the visible content changes; `: keepalive` comments every 15 s."
+            ),
+            "content": {"text/event-stream": {}},
+        },
+        404: {"description": "Unknown event, or a draft event without an admin token"},
+    },
+)
+async def scoreboard_stream(
+    slug: str,
+    request: Request,
+    limit: int = Query(10, ge=1, le=MAX_LIMIT, description="Number of rows (1-100)"),
+    admin: Optional[TokenData] = Depends(optional_admin),
+):
+    event_id = await run_in_threadpool(_resolve_event_id, slug, admin is not None)
     return StreamingResponse(
-        event_generator(),
+        broadcaster.hub.stream(event_id, limit, request.is_disconnected),
         media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
+        headers=SSE_HEADERS,
     )

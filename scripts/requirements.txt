@@ -1,0 +1,2 @@
+# quizctl.py is the only runtime dependency of scripts/ (test_quizctl.py uses the standard library)
+requests>=2.28.0,<3

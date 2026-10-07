@@ -1,0 +1,21 @@
+# Ignore rules for `docker build -f backend/Dockerfile .` (context = repository root).
+# BuildKit reads "<Dockerfile name>.dockerignore" next to the Dockerfile in preference to a root .dockerignore.
+# The Dockerfile only COPYs backend/{requirements.txt,alembic.ini,alembic,app} and events/*.json, so
+# everything else is excluded to keep the context tiny.
+*
+!backend
+!events
+
+backend/.venv
+backend/tests
+backend/.pytest_cache
+backend/.ruff_cache
+backend/.env
+backend/.env.*
+**/__pycache__
+**/*.pyc
+**/*.pyo
+**/.DS_Store
+
+events/*
+!events/*.json

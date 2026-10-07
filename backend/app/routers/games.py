@@ -1,384 +1,461 @@
 """
-Games router - handles game sessions and gameplay
+Game routes (docs/ARCHITECTURE.md sections 4 and 5.1), mounted under ``/api/events``:
+
+    POST /api/events/{slug}/games                     start a game -> questions WITHOUT answers
+    POST /api/events/{slug}/games/{game_id}/submit    score it server side -> result + review
+    GET  /api/events/{slug}/games/{game_id}/result    the same result + review again, once the game is completed
+
+All handlers are plain ``def`` (run in the threadpool). Status gating comes from
+``assert_event_playable``: draft -> 404 (admins may preview), closed -> 403 ``event_closed``. A closed event
+refuses registrations and new games at once, but a game that was already in progress may still be submitted
+for ``CLOSED_EVENT_SUBMIT_GRACE`` (15 minutes from ITS start): an admin closing the event must not rob the
+players in front of a question of their game.
+
+Integrity: ``POST .../games`` returns a random ``submit_token`` (only its SHA-256 is stored, in
+``game_sessions.game_config``); ``POST .../submit`` takes it as the JSON field ``submit_token`` or the
+``X-Game-Token`` header. A wrong token is always refused; a missing one only when ``REQUIRE_SUBMIT_TOKEN``.
+``GET .../result`` is guarded by the very same check (header only: a GET has no body). It exists for the
+player whose submit response was lost on the way back (the server scored the game, the client never saw
+it, and its retry gets 409): the client reads the result it is owed instead of a dead end. It is read-only,
+so it keeps working after the event is closed.
+
+Each handler does ALL its database work in one body and closes the session before returning (see the
+connection discipline note in ``routers/public_events.py``: an open session across response
+serialisation can deadlock the threadpool against the connection pool under load).
 """
 import logging
 import random
-from typing import List
-from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from typing import Optional
 
+from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
+from sqlalchemy import and_, func, or_, select, update
+from sqlalchemy.orm import Session, contains_eager, joinedload
+
+from app.auth import optional_admin
+from app.config import settings
 from app.database import get_db
-from app.models import Question, Player, GameSession, GameAnswer, GameSettings, Category
+from app.models import Category, GameAnswer, GameSession, Player, Question, utcnow
 from app.schemas import (
-    PlayerCreate, PlayerResponse, GameSessionStart, GameSessionSubmit,
-    GameSessionResponse, QuestionForGame, GameCompleteResponse, GameReview,
-    CategoryResponse
+    CategoryRef,
+    GameComplete,
+    GameSessionResponse,
+    GameStarted,
+    GameStartRequest,
+    GameSubmitRequest,
+    QuestionForGame,
+    ReviewItem,
+    TokenData,
 )
+from app.security import new_submit_token, submit_token_matches
+from app.services.broadcaster import notify_event_changed
+from app.services.events import (
+    EVENT_CLOSED,
+    assert_event_playable,
+    drawable_question_condition,
+    get_event_or_404,
+    may_submit_after_close,
+)
+from app.services.scoring import AnswerScore, ScoringRules, score_answer, summarize
+from app.services.selection import NotEnoughQuestions, select_questions
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-
-@router.post("/players", response_model=PlayerResponse, status_code=status.HTTP_201_CREATED)
-async def register_player(player: PlayerCreate, db: Session = Depends(get_db)):
-    """
-    Register a new player for the game
-    Each registration creates a new player record, even if the email already exists.
-    This ensures each game session has its own player identity.
-    """
-    logger.info(f"Registering new player: {player.email}")
-    
-    # Always create a new player for each game session
-    # This allows the same email to be used for multiple game sessions
-    # while maintaining separate player identities and names
-    db_player = Player(**player.model_dump())
-    db.add(db_player)
-    
-    try:
-        db.commit()
-        db.refresh(db_player)
-        logger.info(f"Player registered successfully with ID: {db_player.id}")
-        return db_player
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error registering player: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error registering player"
-        )
+NOT_ENOUGH_QUESTIONS = "not_enough_questions"
+PLAYER_NOT_FOUND = "Player not found"
+GAME_NOT_FOUND = "Game not found"
+GAME_ALREADY_COMPLETED = "game_already_completed"
+GAME_NOT_IN_PROGRESS = "game_not_in_progress"
+GAME_NOT_COMPLETED = "game_not_completed"
+INVALID_GAME_TOKEN = "invalid_game_token"
+SUBMIT_TOKEN_HASH_KEY = "submit_token_hash"  # key of the SHA-256 in GameSession.game_config
 
 
-@router.post("/start", response_model=dict)
-async def start_game(
-    game_start: GameSessionStart,
-    db: Session = Depends(get_db)
-):
-    """
-    Start a new game session for a player
-    Returns the game session ID and list of questions (without answers)
-    """
-    logger.info(f"Starting new game for player ID: {game_start.player_id}")
-    
-    # Verify player exists
-    player = db.query(Player).filter(Player.id == game_start.player_id).first()
-    if not player:
-        logger.warning(f"Player not found: {game_start.player_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Player not found"
+def _make_rng() -> random.Random:
+    """One fresh RNG per game start (seeded from the OS); tests monkeypatch this for determinism."""
+    return random.Random()
+
+
+def eligible_questions(db: Session, event_id: int) -> list[Question]:
+    """Active questions of the event whose category (if any) is active too, categories loaded."""
+    stmt = (
+        select(Question)
+        .outerjoin(Category, Category.id == Question.category_id)
+        .options(contains_eager(Question.category))
+        .where(
+            Question.event_id == event_id,
+            drawable_question_condition(),
         )
-    
-    # Get game settings
-    game_settings = db.query(GameSettings).first()
-    if not game_settings:
-        logger.error("Game settings not found")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Game settings not configured"
-        )
-    
-    # Get all active questions with their categories
-    all_questions = db.query(Question).options(
-        joinedload(Question.category)
-    ).filter(Question.is_active == True).all()
-    
-    if len(all_questions) < game_settings.questions_per_game:
-        logger.warning(f"Not enough questions available: {len(all_questions)} < {game_settings.questions_per_game}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Not enough questions available. Need {game_settings.questions_per_game}, found {len(all_questions)}"
-        )
-    
-    # Select questions based on category distribution
-    selected_questions = select_questions_by_distribution(
-        all_questions,
-        game_settings.questions_per_game,
-        game_settings.category_distribution
+        .order_by(Question.id)
     )
-    
-    # Create game session
-    game_session = GameSession(
-        player_id=game_start.player_id,
+    return list(db.execute(stmt).scalars().unique())
+
+
+# ---------------------------------------------------------------------------------------------
+# Start
+# ---------------------------------------------------------------------------------------------
+@router.post(
+    "/{slug}/games",
+    response_model=GameStarted,
+    summary="Start a game",
+    responses={
+        400: {"description": "`not_enough_questions`"},
+        403: {"description": "`event_closed`"},
+        404: {"description": "Unknown event / draft event / player of another event"},
+    },
+)
+def start_game(
+    slug: str,
+    payload: GameStartRequest,
+    db: Session = Depends(get_db),
+    admin: Optional[TokenData] = Depends(optional_admin),
+):
+    """Pick the questions (weights, redistribution, order: see ``services/selection``), create the
+    session with its answer slots and return the questions WITHOUT answers or explanations."""
+    try:
+        return _start_game(db, slug, payload, is_admin=admin is not None)
+    finally:
+        db.close()
+
+
+def _start_game(db: Session, slug: str, payload: GameStartRequest, is_admin: bool) -> GameStarted:
+    event = get_event_or_404(db, slug, is_admin=is_admin)
+    assert_event_playable(event, is_admin=is_admin)
+
+    player = db.get(Player, payload.player_id)
+    if player is None or player.event_id != event.id:  # same 404: never reveal other events' players
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=PLAYER_NOT_FOUND)
+
+    pool = eligible_questions(db, event.id)
+    try:
+        selected = select_questions(
+            pool,
+            event.questions_per_game,
+            distribution=event.category_distribution,
+            order=event.question_order,
+            rng=_make_rng(),
+        )
+    except NotEnoughQuestions:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=NOT_ENOUGH_QUESTIONS) from None
+
+    rules = ScoringRules.from_event(event)
+    submit_token, submit_token_hash = new_submit_token()
+    game = GameSession(
+        event_id=event.id,
+        player_id=player.id,
         status="in_progress",
+        # snapshot of the rules: editing the event later never changes a running game; the submit token is
+        # stored hashed only (a database dump or an admin screen never reveals a usable token)
         game_config={
-            "questions_per_game": game_settings.questions_per_game,
-            "timer_seconds": game_settings.timer_seconds,
-            "points_correct": game_settings.points_correct,
-            "points_wrong": game_settings.points_wrong,
-            "time_bonus_max": game_settings.time_bonus_max
-        }
+            "questions_per_game": event.questions_per_game,
+            **rules.to_config(),
+            SUBMIT_TOKEN_HASH_KEY: submit_token_hash,
+        },
+        answers=[
+            GameAnswer(question_id=question.id, question_order=position)
+            for position, question in enumerate(selected, start=1)
+        ],
     )
-    db.add(game_session)
-    db.flush()  # Get the game session ID
-    
-    # Create placeholder game answers
-    for idx, question in enumerate(selected_questions):
-        game_answer = GameAnswer(
-            game_session_id=game_session.id,
-            question_id=question.id,
-            question_order=idx + 1,
-            player_answer=None,
-            is_correct=None,
-            time_taken=None,
-            points_earned=0
+    db.add(game)
+    db.flush()
+    questions = [QuestionForGame.model_validate(question) for question in selected]
+    response = GameStarted(
+        game_session_id=game.id,
+        timer_seconds=rules.timer_seconds,
+        points_correct=rules.points_correct,
+        time_bonus_max=rules.time_bonus_max,
+        questions=questions,
+        submit_token=submit_token,
+    )
+    db.commit()
+    logger.info("Game %s started for player %s (event %s)", game.id, player.id, event.slug)
+    return response
+
+
+# ---------------------------------------------------------------------------------------------
+# Submit
+# ---------------------------------------------------------------------------------------------
+def _rank_and_total(db: Session, event_id: int, game: GameSession, score: int, completed_at) -> tuple[int, int]:
+    """Position of ``game`` on the event scoreboard (score desc, completed_at asc, id asc) and the
+    number of completed games of the event. Shared by ``submit`` and ``result``: same ranking, same numbers."""
+    completed = and_(GameSession.event_id == event_id, GameSession.status == "completed")
+    if completed_at is None:  # legacy row: the scoreboard sorts a missing completion time LAST
+        same_score_ahead = or_(
+            GameSession.completed_at.is_not(None),
+            and_(GameSession.completed_at.is_(None), GameSession.id < game.id),
         )
-        db.add(game_answer)
-    
-    try:
-        db.commit()
-        db.refresh(game_session)
-        logger.info(f"Game session created with ID: {game_session.id}")
-        
-        # Return questions without correct answers, but with category info
-        questions_for_game = []
-        for q in selected_questions:
-            q_data = QuestionForGame.model_validate(q).model_dump()
-            if q.category:
-                q_data['category'] = CategoryResponse.model_validate(q.category).model_dump()
-            questions_for_game.append(q_data)
-        
-        return {
-            "game_session_id": game_session.id,
-            "questions": questions_for_game,
-            "timer_seconds": game_settings.timer_seconds
-        }
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error starting game: {str(e)}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error starting game"
+    else:
+        same_score_ahead = or_(
+            GameSession.completed_at < completed_at,
+            and_(GameSession.completed_at == completed_at, GameSession.id < game.id),
         )
+    ahead = or_(GameSession.total_score > score, and_(GameSession.total_score == score, same_score_ahead))
+    better = select(func.count(GameSession.id)).where(completed, ahead).scalar_subquery()
+    total = select(func.count(GameSession.id)).where(completed).scalar_subquery()
+    better_count, total_count = db.execute(select(better, total)).one()
+    return int(better_count or 0) + 1, int(total_count or 0)
 
 
-def select_questions_by_distribution(
-    all_questions: List[Question],
-    num_questions: int,
-    category_distribution: dict = None
-) -> List[Question]:
-    """
-    Select questions based on category distribution.
-    
-    Args:
-        all_questions: List of all available questions
-        num_questions: Number of questions to select
-        category_distribution: Dict mapping category_id to percentage (e.g., {"1": 50, "2": 30, "3": 20})
-                              If None or empty, questions are selected randomly from all categories
-    
-    Returns:
-        List of selected questions
-    """
-    if not category_distribution:
-        # No distribution specified - random selection
-        return random.sample(all_questions, num_questions)
-    
-    # Group questions by category
-    questions_by_category = {}
-    uncategorized = []
-    
-    for q in all_questions:
-        if q.category_id:
-            cat_id = str(q.category_id)
-            if cat_id not in questions_by_category:
-                questions_by_category[cat_id] = []
-            questions_by_category[cat_id].append(q)
-        else:
-            uncategorized.append(q)
-    
-    selected = []
-    remaining_needed = num_questions
-    
-    # Calculate questions per category based on distribution
-    questions_per_category = {}
-    total_percentage = sum(category_distribution.values())
-    
-    for cat_id, percentage in category_distribution.items():
-        # Normalize percentage and calculate count
-        normalized = percentage / total_percentage if total_percentage > 0 else 0
-        count = round(num_questions * normalized)
-        questions_per_category[cat_id] = count
-    
-    # Select questions from each category
-    for cat_id, count in questions_per_category.items():
-        if cat_id in questions_by_category:
-            available = questions_by_category[cat_id]
-            actual_count = min(count, len(available))
-            if actual_count > 0:
-                selected.extend(random.sample(available, actual_count))
-                remaining_needed -= actual_count
-    
-    # If we still need more questions, fill from uncategorized or random
-    if remaining_needed > 0:
-        # Collect all unselected questions
-        selected_ids = {q.id for q in selected}
-        remaining_questions = [q for q in all_questions if q.id not in selected_ids]
-        
-        if len(remaining_questions) >= remaining_needed:
-            selected.extend(random.sample(remaining_questions, remaining_needed))
-        else:
-            selected.extend(remaining_questions)
-    
-    # Shuffle to mix categories
-    random.shuffle(selected)
-    
-    # Trim to exact count if over
-    return selected[:num_questions]
+def _answer_slots(db: Session, game_id: int) -> list[GameAnswer]:
+    """The answer slots of a game in question order, questions and categories loaded."""
+    return list(
+        db.execute(
+            select(GameAnswer)
+            .options(joinedload(GameAnswer.question).joinedload(Question.category))
+            .where(GameAnswer.game_session_id == game_id)
+            .order_by(GameAnswer.question_order)
+        )
+        .scalars()
+        .unique()
+    )
 
 
-@router.post("/{game_session_id}/submit", response_model=GameCompleteResponse)
-async def submit_game(
-    game_session_id: int,
-    submission: GameSessionSubmit,
-    db: Session = Depends(get_db)
+def _review_item(slot: GameAnswer) -> ReviewItem:
+    """One line of the review (correct answer and explanation included: the game is over)."""
+    return ReviewItem(
+        question_id=slot.question_id,
+        question_format=slot.question.question_format,
+        question_text_en=slot.question.question_text_en,
+        question_text_fr=slot.question.question_text_fr,
+        correct_answer=slot.question.correct_answer,
+        player_answer=slot.player_answer,
+        is_correct=slot.is_correct,
+        explanation_en=slot.question.explanation_en,
+        explanation_fr=slot.question.explanation_fr,
+        time_taken=slot.time_taken,
+        points_earned=slot.points_earned,
+        green_label_en=slot.question.green_label_en,
+        green_label_fr=slot.question.green_label_fr,
+        red_label_en=slot.question.red_label_en,
+        red_label_fr=slot.question.red_label_fr,
+        category=CategoryRef.model_validate(slot.question.category) if slot.question.category else None,
+    )
+
+
+@router.post(
+    "/{slug}/games/{game_id}/submit",
+    response_model=GameComplete,
+    summary="Submit the answers of a game",
+    responses={
+        403: {
+            "description": "`invalid_game_token` (wrong token, or missing while REQUIRE_SUBMIT_TOKEN is on) or "
+            "`event_closed` (closed event: only a game started less than 15 minutes ago can still be submitted)"
+        },
+        404: {"description": "Unknown event / game (or a game of another event)"},
+        409: {"description": "`game_already_completed`"},
+    },
+)
+def submit_game(
+    slug: str,
+    game_id: int,
+    payload: GameSubmitRequest,
+    db: Session = Depends(get_db),
+    admin: Optional[TokenData] = Depends(optional_admin),
+    x_game_token: Optional[str] = Header(None, description="Same as the `submit_token` body field"),
 ):
+    """Score the game on the server.
+
+    * The ``submit_token`` of ``POST .../games`` (body field, or ``X-Game-Token`` header) proves the caller
+      is the player who started the game (see the module docstring for the staged rollout).
+
+    * ``time_taken`` is clamped to ``[0, timer]`` (omitted => no time bonus); unknown question ids are
+      ignored; questions missing from the submission (or answered ``null``) are unanswered.
+    * The session row is locked (``SELECT ... FOR UPDATE`` on PostgreSQL) and finally completed with a
+      guarded ``UPDATE ... WHERE status = 'in_progress'``: a double submit gets 409, never a second score.
     """
-    Submit answers for a completed game
-    Calculates score and returns results with review
-    """
-    logger.info(f"Submitting game answers for session: {game_session_id}")
-    
-    # Get game session
-    game_session = db.query(GameSession).filter(GameSession.id == game_session_id).first()
-    if not game_session:
-        logger.warning(f"Game session not found: {game_session_id}")
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Game session not found"
-        )
-    
-    if game_session.status != "in_progress":
-        logger.warning(f"Game session already completed: {game_session_id}")
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Game session already completed"
-        )
-    
-    # Get game settings from session config
-    config = game_session.game_config
-    points_correct = config.get("points_correct", 100)
-    points_wrong = config.get("points_wrong", 0)
-    time_bonus_max = config.get("time_bonus_max", 50)
-    timer_seconds = config.get("timer_seconds", 20)
-    
-    # Process each answer
-    total_score = 0
-    correct_count = 0
-    wrong_count = 0
-    unanswered_count = 0
-    
-    for answer_submission in submission.answers:
-        # Get the game answer record
-        game_answer = db.query(GameAnswer).filter(
-            GameAnswer.game_session_id == game_session_id,
-            GameAnswer.question_id == answer_submission.question_id
-        ).first()
-        
-        if not game_answer:
-            logger.warning(f"Game answer not found for question: {answer_submission.question_id}")
-            continue
-        
-        # Get the question to check correct answer
-        question = db.query(Question).filter(Question.id == answer_submission.question_id).first()
-        if not question:
-            continue
-        
-        # Update game answer
-        game_answer.player_answer = answer_submission.player_answer
-        game_answer.time_taken = answer_submission.time_taken
-        game_answer.answered_at = datetime.utcnow()
-        
-        # Calculate if correct
-        if answer_submission.player_answer is None:
-            # Unanswered
-            game_answer.is_correct = None
-            game_answer.points_earned = 0
-            unanswered_count += 1
-        else:
-            is_correct = answer_submission.player_answer == question.correct_answer
-            game_answer.is_correct = is_correct
-            
-            if is_correct:
-                # Calculate points with time bonus
-                base_points = points_correct
-                # Time bonus: faster = more points (linear scale)
-                if answer_submission.time_taken < timer_seconds:
-                    time_ratio = 1 - (answer_submission.time_taken / timer_seconds)
-                    time_bonus = int(time_bonus_max * time_ratio)
-                else:
-                    time_bonus = 0
-                
-                game_answer.points_earned = base_points + time_bonus
-                total_score += game_answer.points_earned
-                correct_count += 1
-            else:
-                game_answer.points_earned = points_wrong
-                total_score += points_wrong
-                wrong_count += 1
-    
-    # Update game session
-    game_session.status = "completed"
-    game_session.completed_at = datetime.utcnow()
-    game_session.total_score = total_score
-    game_session.correct_answers = correct_count
-    game_session.wrong_answers = wrong_count
-    game_session.unanswered = unanswered_count
-    
     try:
-        db.commit()
-        db.refresh(game_session)
-        logger.info(f"Game completed - Score: {total_score}, Correct: {correct_count}, Wrong: {wrong_count}")
-        
-        # Notify scoreboard of update
-        from app.routers.scoreboard import notify_scoreboard_update
-        notify_scoreboard_update()
-        
-        # Calculate rank
-        rank = db.query(func.count(GameSession.id)).filter(
-            GameSession.status == "completed",
-            GameSession.total_score > total_score
-        ).scalar() + 1
-        
-        total_players = db.query(func.count(GameSession.id)).filter(
-            GameSession.status == "completed"
-        ).scalar()
-        
-        # Build review with correct answers
-        review = []
-        for game_answer in game_session.answers:
-            question = game_answer.question
-            review_item = GameReview(
-                question_id=question.id,
-                question_text_en=question.question_text_en,
-                question_text_fr=question.question_text_fr,
-                correct_answer=question.correct_answer,
-                player_answer=game_answer.player_answer,
-                is_correct=game_answer.is_correct,
-                explanation_en=question.explanation_en,
-                explanation_fr=question.explanation_fr,
-                time_taken=game_answer.time_taken,
-                points_earned=game_answer.points_earned,
-                green_label_en=question.green_label_en,
-                green_label_fr=question.green_label_fr,
-                red_label_en=question.red_label_en,
-                red_label_fr=question.red_label_fr,
-                category_id=question.category_id,
-                category=CategoryResponse.model_validate(question.category) if question.category else None
-            )
-            review.append(review_item)
-        
-        return GameCompleteResponse(
-            game_session=GameSessionResponse.model_validate(game_session),
-            rank=rank,
-            total_players=total_players,
-            review=review
+        result, event_id = _complete_game(
+            db, slug, game_id, payload, is_admin=admin is not None, header_token=x_game_token
         )
-    except Exception as e:
-        db.rollback()
-        logger.error(f"Error submitting game: {str(e)}")
+    finally:
+        db.close()
+    notify_event_changed(event_id)  # after the commit, and after the connection went back to the pool
+    return result
+
+
+def _verify_submit_token(game: GameSession, body_token: Optional[str], header_token: Optional[str]) -> None:
+    """403 ``invalid_game_token`` unless the presented token(s) match the stored hash.
+
+    * nothing presented: refused only when ``REQUIRE_SUBMIT_TOKEN`` (stage 2 of the rollout);
+    * something presented (body and/or header): EVERY presented value must match, always, even while the
+      setting is off (a wrong token is an attack or a bug, never "no token").
+    A blank value counts as not presented.
+    """
+    presented = [token for token in (body_token, header_token) if token]
+    if not presented:
+        if settings.REQUIRE_SUBMIT_TOKEN:
+            logger.warning("Game %s: submit refused, no token (REQUIRE_SUBMIT_TOKEN is on)", game.id)
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=INVALID_GAME_TOKEN)
+        return
+    config = game.game_config if isinstance(game.game_config, dict) else {}
+    stored_hash = config.get(SUBMIT_TOKEN_HASH_KEY)  # absent on games started before tokens existed
+    matches = [submit_token_matches(token, stored_hash) for token in presented]  # no short-circuit
+    if not all(matches):
+        logger.warning("Game %s: submit refused, wrong token", game.id)
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=INVALID_GAME_TOKEN)
+
+
+def _complete_game(
+    db: Session,
+    slug: str,
+    game_id: int,
+    payload: GameSubmitRequest,
+    is_admin: bool,
+    header_token: Optional[str] = None,
+) -> tuple[GameComplete, int]:
+    event = get_event_or_404(db, slug, is_admin=is_admin)
+    closed = event.status == "closed"
+    if not closed:
+        assert_event_playable(event, is_admin=is_admin)  # draft -> 404 for the public
+
+    game = db.execute(
+        select(GameSession)
+        .where(GameSession.id == game_id, GameSession.event_id == event.id)
+        .with_for_update()  # ignored by SQLite
+        .execution_options(populate_existing=True)
+    ).scalar_one_or_none()
+    if game is None:
+        # a closed event stays final: whatever is asked of it, the answer is event_closed
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Error submitting game"
+            status_code=status.HTTP_403_FORBIDDEN if closed else status.HTTP_404_NOT_FOUND,
+            detail=EVENT_CLOSED if closed else GAME_NOT_FOUND,
         )
+    _verify_submit_token(game, payload.submit_token, header_token)
+    if closed and not may_submit_after_close(game.status, game.started_at, utcnow()):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=EVENT_CLOSED)
+    if game.status != "in_progress":
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=GAME_ALREADY_COMPLETED if game.status == "completed" else GAME_NOT_IN_PROGRESS,
+        )
+
+    rules = ScoringRules.from_config(game.game_config, ScoringRules.from_event(event))
+    submitted = {answer.question_id: answer for answer in payload.answers}
+
+    slots = _answer_slots(db, game.id)
+
+    now = utcnow()
+    scores: list[AnswerScore] = []
+    for slot in slots:
+        answer = submitted.get(slot.question_id)
+        if answer is None:  # not submitted: unanswered
+            score = AnswerScore("unanswered", None, 0, None)
+        else:
+            reported = answer.time_taken if "time_taken" in answer.model_fields_set else None
+            score = score_answer(rules, slot.question.correct_answer, answer.player_answer, reported)
+        slot.player_answer = answer.player_answer if answer is not None else None
+        slot.is_correct = score.is_correct
+        slot.time_taken = score.time_taken
+        slot.points_earned = score.points
+        slot.answered_at = now if answer is not None and answer.player_answer is not None else None
+        scores.append(score)
+    totals = summarize(scores)
+
+    claimed = db.execute(
+        update(GameSession)
+        .where(GameSession.id == game.id, GameSession.status == "in_progress")
+        .values(
+            status="completed",
+            completed_at=now,
+            total_score=totals.total_score,
+            correct_answers=totals.correct,
+            wrong_answers=totals.wrong,
+            unanswered=totals.unanswered,
+        )
+        .execution_options(synchronize_session=False)
+    )
+    if claimed.rowcount != 1:  # lost a race (databases without row locks): nothing was scored
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=GAME_ALREADY_COMPLETED)
+
+    review = [_review_item(slot) for slot in slots]
+    session_result = GameSessionResponse(
+        id=game.id,
+        player_id=game.player_id,
+        status="completed",
+        total_score=totals.total_score,
+        correct_answers=totals.correct,
+        wrong_answers=totals.wrong,
+        unanswered=totals.unanswered,
+        started_at=game.started_at,
+        completed_at=now,
+    )
+    db.commit()
+
+    rank, total_players = _rank_and_total(db, event.id, game, totals.total_score, now)
+    logger.info(
+        "Game %s completed: score=%s correct=%s wrong=%s unanswered=%s rank=%s/%s",
+        game.id, totals.total_score, totals.correct, totals.wrong, totals.unanswered, rank, total_players,
+    )
+    result = GameComplete(game_session=session_result, rank=rank, total_players=total_players, review=review)
+    return result, event.id
+
+
+# ---------------------------------------------------------------------------------------------
+# Result (read a completed game again)
+# ---------------------------------------------------------------------------------------------
+@router.get(
+    "/{slug}/games/{game_id}/result",
+    response_model=GameComplete,
+    summary="Read the result of a completed game again",
+    responses={
+        403: {
+            "description": "`invalid_game_token` (wrong token, or missing while REQUIRE_SUBMIT_TOKEN is on)"
+        },
+        404: {"description": "Unknown event / game (or a game of another event)"},
+        409: {"description": "`game_not_completed` (still in progress, or abandoned)"},
+    },
+)
+def game_result(
+    slug: str,
+    game_id: int,
+    response: Response,
+    db: Session = Depends(get_db),
+    admin: Optional[TokenData] = Depends(optional_admin),
+    x_game_token: Optional[str] = Header(None, description="The `submit_token` of `POST .../games`"),
+):
+    """The ``GameComplete`` payload ``submit`` returned, for a game that is ALREADY completed.
+
+    For the player whose submit response never arrived (network lost AFTER the server scored the game: the
+    retry then gets 409 ``game_already_completed``). Protected by the game's token exactly like ``submit`` (same
+    constant-time check, same ``REQUIRE_SUBMIT_TOKEN`` rule, a wrong token is always a 403) but through the
+    ``X-Game-Token`` header only, a GET having no body. Rank and ``total_players`` are those of ``submit``
+    (``_rank_and_total``), computed now, so they reflect the scoreboard as it is at this moment.
+
+    Read-only, so it works for a ``closed`` event too (``draft``: 404 unless admin preview). The token is
+    checked before the state of the game is revealed. The answer is never cacheable.
+    """
+    try:
+        result = _read_result(db, slug, game_id, is_admin=admin is not None, header_token=x_game_token)
+    except HTTPException as exc:
+        raise HTTPException(
+            status_code=exc.status_code, detail=exc.detail, headers={**(exc.headers or {}), "Cache-Control": "no-store"}
+        ) from None
+    finally:
+        db.close()
+    response.headers["Cache-Control"] = "no-store"  # a result carries a player's answers: never from a shared cache
+    return result
+
+
+def _read_result(
+    db: Session, slug: str, game_id: int, is_admin: bool, header_token: Optional[str]
+) -> GameComplete:
+    event = get_event_or_404(db, slug, is_admin=is_admin)  # draft -> 404 (admin preview aside); closed is fine
+    game = db.execute(
+        select(GameSession).where(GameSession.id == game_id, GameSession.event_id == event.id)
+    ).scalar_one_or_none()
+    if game is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=GAME_NOT_FOUND)
+    _verify_submit_token(game, None, header_token)
+    if game.status != "completed":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=GAME_NOT_COMPLETED)
+
+    review = [_review_item(slot) for slot in _answer_slots(db, game.id)]
+    rank, total_players = _rank_and_total(db, event.id, game, game.total_score, game.completed_at)
+    return GameComplete(
+        game_session=GameSessionResponse.model_validate(game),
+        rank=rank,
+        total_players=total_players,
+        review=review,
+    )

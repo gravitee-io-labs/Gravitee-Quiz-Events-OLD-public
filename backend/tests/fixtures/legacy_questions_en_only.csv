@@ -1,0 +1,7 @@
+category,difficulty,question_text_en,correct_answer,green_label_en,red_label_en,explanation_en
+REST API,1,REST APIs must always use JSON as the data format.,red,TRUE,FALSE,"REST APIs can use any data format including XML, JSON, CSV, or binary formats like Parquet. JSON is popular but not mandatory."
+REST API,1,HTTP status code 201 indicates that a resource was successfully created.,green,TRUE,FALSE,"201 Created is the standard response for successful resource creation, typically used with POST requests."
+REST API,2,The DELETE HTTP method is not idempotent.,red,TRUE,FALSE,DELETE is idempotent - deleting the same resource multiple times has the same effect as deleting it once.
+REST API,1,REST stands for Remote Execution State Transfer.,red,TRUE,FALSE,"REST stands for Representational State Transfer, defined by Roy Fielding in 2000."
+REST API,2,The PATCH method should be used for partial updates of a resource.,green,TRUE,FALSE,"PATCH is specifically designed for partial modifications, unlike PUT which replaces the entire resource."
+REST API,1,HTTP status code 404 means the server is temporarily unavailable.,red,TRUE,FALSE,404 means Not Found - the requested resource does not exist. 503 is for server unavailability.

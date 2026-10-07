@@ -1,0 +1,127 @@
+{
+  "format": "gravitee-quiz-event",
+  "version": 1,
+  "event": {
+    "slug": "alpha-event",
+    "name": "Alpha Event",
+    "game_title": "Alpha Masters",
+    "status": "live",
+    "hero_title_en": "Become THE Sample Master!",
+    "hero_title_fr": "Devenez LE Sample Master !",
+    "tagline_en": "Fast answers win",
+    "tagline_fr": "Les réponses rapides gagnent",
+    "description_en": "A sample event.",
+    "description_fr": "Un évènement exemple.",
+    "location": "Paris",
+    "starts_on": "2026-10-07",
+    "ends_on": "2026-10-08",
+    "languages": [
+      "en",
+      "fr"
+    ],
+    "default_language": "en",
+    "branding": {
+      "primary_color": "#7C5CFF",
+      "accent_color": "#22D3EE",
+      "background_style": "aurora",
+      "logo_url": null,
+      "default_theme": "dark",
+      "show_join_qr": true
+    },
+    "settings": {
+      "questions_per_game": 2,
+      "timer_seconds": 20,
+      "points_correct": 100,
+      "points_wrong": 0,
+      "time_bonus_max": 50,
+      "category_distribution": {
+        "Alpha": 50,
+        "Beta": 50
+      },
+      "question_order": "random",
+      "collect_phone": "optional",
+      "consent_text_en": null,
+      "consent_text_fr": null
+    }
+  },
+  "categories": [
+    {
+      "name": "Alpha",
+      "name_fr": "Alpha FR",
+      "description": "First",
+      "description_fr": "Premier",
+      "color": "#7C5CFF",
+      "is_active": true
+    },
+    {
+      "name": "Beta",
+      "name_fr": null,
+      "description": null,
+      "description_fr": null,
+      "color": "#FC5607",
+      "is_active": true
+    }
+  ],
+  "questions": [
+    {
+      "category": "Alpha",
+      "question_format": "true_false",
+      "difficulty": 1,
+      "question_text_en": "Alpha is first?",
+      "question_text_fr": "Alpha est premier ?",
+      "correct_answer": "green",
+      "green_label_en": "TRUE",
+      "green_label_fr": "Vrai",
+      "red_label_en": "FALSE",
+      "red_label_fr": "Faux",
+      "explanation_en": "Because.",
+      "explanation_fr": "Parce que.",
+      "is_active": true
+    },
+    {
+      "category": "Alpha",
+      "question_format": "true_false",
+      "difficulty": 2,
+      "question_text_en": "Alpha is last?",
+      "question_text_fr": "Alpha est dernier ?",
+      "correct_answer": "red",
+      "green_label_en": "TRUE",
+      "green_label_fr": "Vrai",
+      "red_label_en": "FALSE",
+      "red_label_fr": "Faux",
+      "explanation_en": "Because.",
+      "explanation_fr": "Parce que.",
+      "is_active": true
+    },
+    {
+      "category": "Beta",
+      "question_format": "two_choices",
+      "difficulty": 2,
+      "question_text_en": "Pick the proxy",
+      "question_text_fr": "Choisissez le proxy",
+      "correct_answer": "green",
+      "green_label_en": "LLM Proxy",
+      "green_label_fr": "Proxy LLM",
+      "red_label_en": "MCP Proxy",
+      "red_label_fr": "Proxy MCP",
+      "explanation_en": "Because.",
+      "explanation_fr": "Parce que.",
+      "is_active": true
+    },
+    {
+      "category": "Beta",
+      "question_format": "two_choices",
+      "difficulty": 3,
+      "question_text_en": "Pick the verb",
+      "question_text_fr": "Choisissez le verbe",
+      "correct_answer": "red",
+      "green_label_en": "GET",
+      "green_label_fr": "GET",
+      "red_label_en": "POST",
+      "red_label_fr": "POST",
+      "explanation_en": "Because.",
+      "explanation_fr": "Parce que.",
+      "is_active": true
+    }
+  ]
+}
