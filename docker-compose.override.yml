@@ -1,0 +1,35 @@
+# Development overrides, merged automatically by `docker compose up`.
+#   - backend: source bind-mounted, uvicorn --reload
+#   - web / admin-console: static trees bind-mounted READ-ONLY, so an edit shows up on browser refresh
+#     (HTML/JS/CSS are served `no-cache` with ETag; fonts/icons/images are immutable: hard-refresh
+#     or rebuild after replacing one of those)
+#
+# Skip it to run the images exactly as deployed:  docker compose -f docker-compose.yml up -d --build
+
+services:
+  backend:
+    command:
+      - uvicorn
+      - app.main:app
+      - --host=0.0.0.0
+      - --port=8000
+      - --reload
+      - --reload-dir=/app/app
+    environment:
+      # ./backend replaces /app, which hides the bundles baked into the image: mount them elsewhere.
+      SEED_DIR: /seed/events
+    volumes:
+      - ./backend:/app
+      - ./events:/seed/events:ro
+
+  web:
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./shared:/usr/share/nginx/shared:ro
+      - ./assets:/usr/share/nginx/assets:ro
+
+  admin-console:
+    volumes:
+      - ./admin-console:/usr/share/nginx/html/admin:ro
+      - ./shared:/usr/share/nginx/shared:ro
+      - ./assets:/usr/share/nginx/assets:ro

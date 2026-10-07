@@ -1,0 +1,27 @@
+# The database is only ever used by the backend. Without this policy any pod of the cluster (the
+# other playground namespaces included) could open quiz-db:5432 - and the database password is the
+# well-known default of the original manifests. Only ingress to quiz-db is restricted: backups and
+# restores run INSIDE the pod (kubectl exec -> 127.0.0.1), probes are exec probes, so they are not
+# affected. Enforced by the cluster's network policy engine (Calico on AKS).
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: quiz-db-backend-only
+  namespace: quiz-game
+  labels:
+    app.kubernetes.io/name: quiz-db
+    app.kubernetes.io/part-of: gravitee-quiz
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: quiz-db
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: quiz-backend
+      ports:
+        - protocol: TCP
+          port: 5432

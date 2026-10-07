@@ -1,100 +1,124 @@
+# Gravitee Quiz Events - local stack (mirrors production: one origin, same paths)
+#
+#   docker compose up -d --build        ->  http://localhost:8080
+#       /            hub (live events)
+#       /{slug}      event game            e.g. /api-masters
+#       /{slug}/scoreboard
+#       /admin/      admin console (admin / admin in dev)
+#       /api/...     backend API (docs at /api/docs in dev)
+#
+# `docker compose up` automatically merges docker-compose.override.yml (dev: live reload, static
+# files bind-mounted read-only). Production-like run, images exactly as they will be deployed:
+#       docker compose -f docker-compose.yml up -d --build
+#
+# Every setting below can be overridden from the shell or from a .env file (see .env.example).
+
 services:
-  # PostgreSQL Database
   db:
     image: postgres:15-alpine
-    container_name: gravitee-quiz-db
     environment:
-      POSTGRES_DB: gravitee_quiz
-      POSTGRES_USER: quiz_user
-      POSTGRES_PASSWORD: quiz_password
+      POSTGRES_DB: ${POSTGRES_DB:-gravitee_quiz}
+      POSTGRES_USER: ${POSTGRES_USER:-quiz_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-quiz_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      # Loopback only: handy for psql / pg_dump, never exposed on the network.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U quiz_user -d gravitee_quiz"]
-      interval: 10s
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
     networks:
       - quiz-network
 
-  # Backend API Server (Python FastAPI)
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: gravitee-quiz-backend
+      context: .
+      dockerfile: backend/Dockerfile
     environment:
-      # API Configuration
-      BASE_PATH: ${BASE_PATH:-}  # e.g., /event-name/quiz or empty for root
-      # Database
-      DATABASE_URL: postgresql://quiz_user:quiz_password@db:5432/gravitee_quiz
-      # Security
-      SECRET_KEY: your-secret-key-change-in-production
-      # CORS - Add your production domains here
-      CORS_ORIGINS: http://localhost:8080,http://localhost:8081,http://localhost:8082
+      APP_ENV: ${APP_ENV:-dev}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-quiz_user}:${POSTGRES_PASSWORD:-quiz_password}@db:5432/${POSTGRES_DB:-gravitee_quiz}
+      # Dev-only default. Production uses the Kubernetes secret quiz-backend-secret instead.
+      SECRET_KEY: ${SECRET_KEY:-dev-only-secret-key-do-not-use-in-production-0123456789}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      # Same-origin through the gateway needs no CORS; this is for tools hitting :8000 directly.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:${GATEWAY_PORT:-8080},http://127.0.0.1:${GATEWAY_PORT:-8080}}
+      # Seed events/api-masters.json (bundled in the image) when the database holds no event yet.
+      SEED_ON_STARTUP: ${SEED_ON_STARTUP:-true}
+      # Same as production: a game can only be submitted with the token returned at start.
+      REQUIRE_SUBMIT_TOKEN: ${REQUIRE_SUBMIT_TOKEN:-true}
+      LOGIN_HARD_MAX_FAILURES: ${LOGIN_HARD_MAX_FAILURES:-50}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
     ports:
-      - "8000:8000"
+      # Loopback only. The gateway (below) is the public entry point.
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
-    volumes:
-      - ./backend:/app
+    healthcheck:
+      # python:slim has no curl/wget. First start runs the migrations, hence the long start_period.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+    restart: unless-stopped
     networks:
       - quiz-network
-    restart: unless-stopped
 
-  # Game Client Frontend
-  game-client:
+  web:
     build:
       context: .
-      dockerfile: game-client/Dockerfile
-    container_name: gravitee-quiz-game-client
+      dockerfile: web/Dockerfile
     environment:
-      # API URL for backend (injected into HTML at runtime)
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000/api}
-    ports:
-      - "8080:80"
-    depends_on:
-      - backend
+      API_BASE_URL: ${API_BASE_URL:-/api}
+      # Unset in dev: the scoreboard QR code uses the address the page was opened from (location.origin).
+      # Set it (an origin, no path) to make it point somewhere else, e.g. https://quiz.events.gravitee.io
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+    restart: unless-stopped
     networks:
       - quiz-network
-    restart: unless-stopped
 
-  # Admin Console Frontend
   admin-console:
     build:
       context: .
       dockerfile: admin-console/Dockerfile
-    container_name: gravitee-quiz-admin-console
     environment:
-      # API URL for backend (injected into HTML at runtime)
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000/api}
-    ports:
-      - "8081:80"
-    depends_on:
-      - backend
+      API_BASE_URL: ${API_BASE_URL:-/api}
+    restart: unless-stopped
     networks:
       - quiz-network
-    restart: unless-stopped
 
-  # Scoreboard Display
-  scoreboard:
-    build:
-      context: .
-      dockerfile: scoreboard/Dockerfile
-    container_name: gravitee-quiz-scoreboard
-    environment:
-      # API URL for backend (injected into HTML at runtime)
-      API_BASE_URL: ${API_BASE_URL:-http://localhost:8000/api}
+  # Same routing as the production ingress: /api -> backend, /admin -> admin-console, / -> web.
+  gateway:
+    image: nginx:1.30-alpine
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
-      - "8082:80"
+      # Reachable from the LAN on purpose (test the game from a phone on the same Wi-Fi).
+      - "${GATEWAY_PORT:-8080}:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      web:
+        condition: service_started
+      admin-console:
+        condition: service_started
+    healthcheck:
+      # Goes all the way through: gateway -> backend -> database.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
     networks:
       - quiz-network
-    restart: unless-stopped
 
 volumes:
   postgres_data:

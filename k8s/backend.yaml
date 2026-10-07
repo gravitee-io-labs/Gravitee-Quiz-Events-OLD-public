@@ -7,6 +7,10 @@ metadata:
     app.kubernetes.io/name: quiz-backend
     app.kubernetes.io/part-of: gravitee-quiz
 spec:
+  # One replica, as decided for the original deployment ("1 replica for each and rolling update").
+  # The app is replica-safe (JWTs are stateless, game state lives in PostgreSQL, the scoreboard SSE
+  # stream re-checks the DB every few seconds, migrations run under a PostgreSQL advisory lock), so
+  # raising this is a one-line change: `kubectl scale deploy/quiz-backend --replicas=2`.
   replicas: 1
   strategy:
     type: RollingUpdate
@@ -22,14 +26,31 @@ spec:
         app.kubernetes.io/name: quiz-backend
         app.kubernetes.io/part-of: gravitee-quiz
     spec:
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: quiz-backend
       containers:
         - name: backend
-          image: dobl1/quiz-backend:1.0.5
+          image: dobl1/quiz-backend:2.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 8000
               name: http
           env:
+            # With APP_ENV=production the backend refuses to start on a default/weak SECRET_KEY
+            # or ADMIN_PASSWORD=admin. Create the secret with k8s/create-backend-secret.sh.
+            - name: APP_ENV
+              value: production
+            - name: LOG_LEVEL
+              value: INFO
             - name: DATABASE_URL
               valueFrom:
                 secretKeyRef:
@@ -40,35 +61,80 @@ spec:
                 secretKeyRef:
                   name: quiz-backend-secret
                   key: SECRET_KEY
-            - name: BASE_PATH
+            - name: ADMIN_USERNAME
               valueFrom:
-                configMapKeyRef:
-                  name: quiz-backend-config
-                  key: BASE_PATH
+                secretKeyRef:
+                  name: quiz-backend-secret
+                  key: ADMIN_USERNAME
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: quiz-backend-secret
+                  key: ADMIN_PASSWORD
             - name: CORS_ORIGINS
               valueFrom:
                 configMapKeyRef:
                   name: quiz-backend-config
                   key: CORS_ORIGINS
+            - name: ENABLE_DOCS
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-backend-config
+                  key: ENABLE_DOCS
+            - name: REQUIRE_SUBMIT_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-backend-config
+                  key: REQUIRE_SUBMIT_TOKEN
+            - name: LOGIN_HARD_MAX_FAILURES
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-backend-config
+                  key: LOGIN_HARD_MAX_FAILURES
           resources:
             requests:
               memory: "256Mi"
               cpu: "100m"
             limits:
               memory: "512Mi"
-              cpu: "500m"
-          livenessProbe:
+              cpu: "1000m"
+          # The image runs as the numeric uid 10001 (backend/Dockerfile): refuse to start as root.
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
+          # Keep serving for a few seconds after the pod is marked terminating: the ingress needs a
+          # moment to drop it from its endpoints (no failed requests during a rolling update).
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          # First start runs the Alembic migrations (and, on the very first 2.0 deploy, the
+          # legacy -> events data migration): give it up to 3 minutes before liveness applies.
+          startupProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 36
+          # Liveness is DB-free (/livez): a database outage must not restart-loop the backends.
+          # Readiness (/health) checks the database, so traffic stops until it is back.
+          livenessProbe:
+            httpGet:
+              path: /livez
+              port: 8000
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 5
             periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
 ---
 apiVersion: v1
 kind: Service

@@ -1,206 +1,48 @@
-# Kubernetes Deployment for Quiz Game
+# Kubernetes manifests (namespace `quiz-game`)
 
-This directory contains all the Kubernetes manifests needed to deploy the Gravitee Quiz Game application.
-
-## Prerequisites
-
-- Kubernetes cluster (1.24+)
-- kubectl configured to access your cluster
-- cert-manager installed with an `http-01` ClusterIssuer
-- nginx-ingress controller installed
-- Container images pushed to a registry
-
-## Architecture
+Production topology of Gravitee Quiz Events on AKS. Full guide (DNS/TLS, secrets, deploy, rollback,
+runbooks): **[`docs/DEPLOYMENT.md`](../docs/DEPLOYMENT.md)**.
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Ingress (HTTPS with TLS)                         │
-│              api-masters.events.gravitee.io                   │
-├─────────────────────────────────────────────────────────────────────┤
-│  /api/*       │  /game/*      │  /admin/*     │  /scoreboard/*      │
-│      ↓        │      ↓        │      ↓        │       ↓             │
-│  Backend      │  Game Client  │ Admin Console │   Scoreboard        │
-│  (FastAPI)    │   (Nginx)     │   (Nginx)     │    (Nginx)          │
-└───────┬───────┴───────────────┴───────────────┴─────────────────────┘
-        │
-        ↓
-   PostgreSQL DB
+https://quiz.events.gravitee.io  (ingress quiz-ingress, cert-manager google-ca-http01, secret quiz-events-tls)
+  /api    -> quiz-backend:8000        1 replica    dobl1/quiz-backend:2.0.0
+  /admin  -> quiz-admin-console:80    1 replica    dobl1/quiz-admin-console:2.0.0
+  /       -> quiz-web:80              1 replica    dobl1/quiz-web:2.0.0
+quiz-db:5432   PostgreSQL 15 + PVC quiz-db-pvc (5Gi)
 ```
 
-## URLs
+| File | Content |
+|---|---|
+| `namespace.yaml` | namespace `quiz-game` |
+| `configmaps.yaml` | `quiz-backend-config` (CORS origin, docs off), `quiz-frontend-config` (`API_BASE_URL=/api`) |
+| `database.yaml` | PVC, `quiz-db` deployment (Recreate) and service: unchanged from 1.0.5 |
+| `backend.yaml` | `quiz-backend`: `APP_ENV=production`, probes on `/health`, rolling update with `maxUnavailable: 0` |
+| `web.yaml`, `admin-console.yaml` | static nginx deployments and services |
+| `networkpolicy.yaml` | only the backend pods may open `quiz-db:5432` (the DB password is still the old default, see `docs/DEPLOYMENT.md`) |
+| `ingress.yaml` | single host, Prefix paths `/api` `/admin` `/`, 3600 s proxy timeouts for the scoreboard SSE stream |
+| `kustomization.yaml` | resources + image tags (`2.0.0`) |
+| `secrets.example.yaml` | **reference only**, not applied (it would overwrite live secrets) |
+| `deploy.sh` | build, push, back up, apply, wait, smoke-check (`--help`) |
+| `create-backend-secret.sh` | creates / completes `quiz-backend-secret` (random `SECRET_KEY` and `ADMIN_PASSWORD`, only what is missing) |
+| `backup-db.sh`, `restore-db.md` | `pg_dump` to `backups/` (gitignored) and the restore procedure |
 
-After deployment, the application will be available at:
-
-| Service       | URL                                                      |
-|---------------|----------------------------------------------------------|
-| Game Client   | https://api-masters.events.gravitee.io/game        |
-| Admin Console | https://api-masters.events.gravitee.io/admin       |
-| Scoreboard    | https://api-masters.events.gravitee.io/scoreboard  |
-| Backend API   | https://api-masters.events.gravitee.io/api         |
-
-## Deployment Steps
-
-### 1. Build and Push Docker Images
-
-First, build and push the Docker images to your container registry:
+## Everyday commands
 
 ```bash
-# Set your registry
-REGISTRY="your-registry.io"
-
-# Build images
-docker build -t $REGISTRY/quiz-backend:latest -f backend/Dockerfile ./backend
-docker build -t $REGISTRY/quiz-game-client:latest -f game-client/Dockerfile .
-docker build -t $REGISTRY/quiz-admin-console:latest -f admin-console/Dockerfile .
-docker build -t $REGISTRY/quiz-scoreboard:latest -f scoreboard/Dockerfile .
-
-# Push images
-docker push $REGISTRY/quiz-backend:latest
-docker push $REGISTRY/quiz-game-client:latest
-docker push $REGISTRY/quiz-admin-console:latest
-docker push $REGISTRY/quiz-scoreboard:latest
+kubectl config current-context                  # make sure it is the right cluster
+kubectl kustomize k8s/                          # render
+kubectl apply --dry-run=client -k k8s/          # validate (never changes the cluster)
+k8s/create-backend-secret.sh                    # once, before the first 2.0 deploy
+k8s/deploy.sh --dry-run                         # rehearsal: checks + validation, changes nothing
+k8s/deploy.sh                                   # build + push + deploy 2.0.0
+k8s/deploy.sh 2.0.1 --deploy-only               # roll out an already pushed tag
+k8s/backup-db.sh                                # database backup
+kubectl get pods,ingress,certificate -n quiz-game
 ```
 
-### 2. Update Image References
+## Rules of this directory
 
-Update the image references in the deployment files or use kustomize to override:
-
-```yaml
-# In k8s/kustomization.yaml, uncomment and update:
-images:
-  - name: gravitee/quiz-backend
-    newName: your-registry.io/quiz-backend
-    newTag: v1.0.0
-  # ... etc
-```
-
-### 3. Update Secrets
-
-**Important:** Update the secrets in `secrets.yaml` with production values:
-
-```bash
-# Generate a secure secret key
-openssl rand -base64 32
-```
-
-### 4. Deploy with Kustomize
-
-```bash
-# Preview the manifests
-kubectl kustomize k8s/
-
-# Apply to cluster
-kubectl apply -k k8s/
-
-# Or without kustomize, apply files individually:
-kubectl apply -f k8s/namespace.yaml
-kubectl apply -f k8s/secrets.yaml
-kubectl apply -f k8s/configmaps.yaml
-kubectl apply -f k8s/database.yaml
-kubectl apply -f k8s/backend.yaml
-kubectl apply -f k8s/game-client.yaml
-kubectl apply -f k8s/admin-console.yaml
-kubectl apply -f k8s/scoreboard.yaml
-kubectl apply -f k8s/ingress.yaml
-```
-
-### 5. Verify Deployment
-
-```bash
-# Check all pods are running
-kubectl get pods -n quiz-game
-
-# Check services
-kubectl get svc -n quiz-game
-
-# Check ingress
-kubectl get ingress -n quiz-game
-
-# Check certificate status
-kubectl get certificate -n quiz-game
-
-# View logs
-kubectl logs -n quiz-game -l app.kubernetes.io/name=quiz-backend
-```
-
-## Configuration
-
-### Environment Variables
-
-| Variable        | Description                           | Default                                            |
-|-----------------|---------------------------------------|----------------------------------------------------|
-| `DATABASE_URL`  | PostgreSQL connection string          | Set in secrets.yaml                                |
-| `SECRET_KEY`    | JWT signing key                       | Set in secrets.yaml                                |
-| `BASE_PATH`     | API base path prefix                  | "" (empty)                                         |
-| `CORS_ORIGINS`  | Allowed CORS origins                  | https://api-masters.events.gravitee.io       |
-| `API_BASE_URL`  | Frontend API URL                      | https://api-masters.events.gravitee.io/api   |
-
-### Scaling
-
-Adjust replicas in the deployment files:
-
-```bash
-kubectl scale deployment quiz-backend -n quiz-game --replicas=3
-kubectl scale deployment quiz-game-client -n quiz-game --replicas=3
-```
-
-### TLS/Certificates
-
-The ingress is configured to use cert-manager with the `http-01` ClusterIssuer. Make sure:
-
-1. cert-manager is installed in your cluster
-2. You have an `http-01` ClusterIssuer configured:
-
-```yaml
-apiVersion: cert-manager.io/v1
-kind: ClusterIssuer
-metadata:
-  name: http-01
-spec:
-  acme:
-    server: https://acme-v02.api.letsencrypt.org/directory
-    email: your-email@example.com
-    privateKeySecretRef:
-      name: letsencrypt-http01
-    solvers:
-      - http01:
-          ingress:
-            class: nginx
-```
-
-## Troubleshooting
-
-### Certificate not issuing
-
-```bash
-# Check certificate status
-kubectl describe certificate quiz-tls-cert -n quiz-game
-
-# Check cert-manager logs
-kubectl logs -n cert-manager -l app=cert-manager
-```
-
-### Backend not connecting to database
-
-```bash
-# Check database is running
-kubectl get pods -n quiz-game -l app.kubernetes.io/name=quiz-db
-
-# Check database logs
-kubectl logs -n quiz-game -l app.kubernetes.io/name=quiz-db
-```
-
-### Ingress not working
-
-```bash
-# Check ingress controller logs
-kubectl logs -n ingress-nginx -l app.kubernetes.io/name=ingress-nginx
-```
-
-## Cleanup
-
-```bash
-kubectl delete -k k8s/
-# or
-kubectl delete namespace quiz-game
-```
+- **Secrets are never part of the kustomization.** `quiz-db-secret` exists in the cluster; `quiz-backend-secret` is managed by
+  `create-backend-secret.sh`. Never commit a secret value.
+- `commonLabels` in `kustomization.yaml` are part of the immutable Deployment selectors: do not change them.
+- The ingress serves **only** `quiz.events.gravitee.io`.

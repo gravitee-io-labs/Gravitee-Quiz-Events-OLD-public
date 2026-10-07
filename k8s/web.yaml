@@ -1,12 +1,14 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: quiz-admin-console
+  name: quiz-web
   namespace: quiz-game
   labels:
-    app.kubernetes.io/name: quiz-admin-console
+    app.kubernetes.io/name: quiz-web
     app.kubernetes.io/part-of: gravitee-quiz
 spec:
+  # Static nginx, the entry point of every player. One replica (rolling updates keep it available);
+  # scale to 2 for extra resilience: `kubectl scale deploy/quiz-web --replicas=2`.
   replicas: 1
   strategy:
     type: RollingUpdate
@@ -15,19 +17,26 @@ spec:
       maxUnavailable: 0
   selector:
     matchLabels:
-      app.kubernetes.io/name: quiz-admin-console
+      app.kubernetes.io/name: quiz-web
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: quiz-admin-console
+        app.kubernetes.io/name: quiz-web
         app.kubernetes.io/part-of: gravitee-quiz
     spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: quiz-web
       containers:
-        - name: admin-console
-          image: dobl1/quiz-admin-console:2.0.0
+        - name: web
+          image: dobl1/quiz-web:2.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 80
@@ -38,13 +47,22 @@ spec:
                 configMapKeyRef:
                   name: quiz-frontend-config
                   key: API_BASE_URL
+            # Optional: a ConfigMap without the key (older apply) leaves the QR on location.origin.
+            - name: PUBLIC_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: quiz-frontend-config
+                  key: PUBLIC_BASE_URL
+                  optional: true
+          # Every player loads the app within seconds of the doors opening (gzip on the fly costs CPU):
+          # a generous CPU limit keeps the health probes answering while the crowd arrives.
           resources:
             requests:
               memory: "32Mi"
-              cpu: "25m"
+              cpu: "50m"
             limits:
               memory: "128Mi"
-              cpu: "250m"
+              cpu: "1000m"
           # nginx:alpine starts as root to bind port 80 and runs its workers as "nginx":
           # keep only the capabilities that needs.
           securityContext:
@@ -58,10 +76,9 @@ spec:
             preStop:
               exec:
                 command: ["sleep", "5"]
-          # The console is served under /admin/ (path preserved by the ingress).
           livenessProbe:
             httpGet:
-              path: /admin/health
+              path: /health
               port: 80
             initialDelaySeconds: 10
             periodSeconds: 10
@@ -69,7 +86,7 @@ spec:
             failureThreshold: 6
           readinessProbe:
             httpGet:
-              path: /admin/health
+              path: /health
               port: 80
             initialDelaySeconds: 3
             periodSeconds: 5
@@ -78,10 +95,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: quiz-admin-console
+  name: quiz-web
   namespace: quiz-game
   labels:
-    app.kubernetes.io/name: quiz-admin-console
+    app.kubernetes.io/name: quiz-web
     app.kubernetes.io/part-of: gravitee-quiz
 spec:
   type: ClusterIP
@@ -90,4 +107,4 @@ spec:
       targetPort: 80
       name: http
   selector:
-    app.kubernetes.io/name: quiz-admin-console
+    app.kubernetes.io/name: quiz-web

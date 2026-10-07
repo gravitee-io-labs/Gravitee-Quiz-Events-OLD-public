@@ -1,3 +1,8 @@
+# One public host, three Prefix paths (no regex). The longest prefix wins, so /api and /admin are
+# served by their backends and everything else falls through to the web app.
+#   https://quiz.events.gravitee.io/        -> quiz-web
+#   https://quiz.events.gravitee.io/admin   -> quiz-admin-console
+#   https://quiz.events.gravitee.io/api     -> quiz-backend
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -7,25 +12,25 @@ metadata:
     app.kubernetes.io/name: quiz-ingress
     app.kubernetes.io/part-of: gravitee-quiz
   annotations:
-    # Cert-manager annotations - auto-creates certificate
+    # cert-manager issues the certificate into the secret named under spec.tls
     cert-manager.io/cluster-issuer: "google-ca-http01"
-    # Nginx ingress annotations
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    # CSV imports and event bundles
     nginx.ingress.kubernetes.io/proxy-body-size: "10m"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
-    nginx.ingress.kubernetes.io/use-regex: "true"
+    # The scoreboard stream (SSE, /api/events/{slug}/scoreboard/stream) is a long-lived response:
+    # the default 60 s timeout would cut every big-screen connection once a minute.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   tls:
     - hosts:
-        - api-masters.events.gravitee.io
-      secretName: quiz-tls-secret
+        - quiz.events.gravitee.io
+      secretName: quiz-events-tls
   rules:
-    - host: api-masters.events.gravitee.io
+    - host: quiz.events.gravitee.io
       http:
         paths:
-          # Backend API - must be first for /api prefix
           - path: /api
             pathType: Prefix
             backend:
@@ -33,15 +38,6 @@ spec:
                 name: quiz-backend
                 port:
                   number: 8000
-          # Game Client
-          - path: /game
-            pathType: Prefix
-            backend:
-              service:
-                name: quiz-game-client
-                port:
-                  number: 80
-          # Admin Console
           - path: /admin
             pathType: Prefix
             backend:
@@ -49,19 +45,10 @@ spec:
                 name: quiz-admin-console
                 port:
                   number: 80
-          # Scoreboard
-          - path: /scoreboard
-            pathType: Prefix
-            backend:
-              service:
-                name: quiz-scoreboard
-                port:
-                  number: 80
-          # Default root to game client
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: quiz-game-client
+                name: quiz-web
                 port:
                   number: 80

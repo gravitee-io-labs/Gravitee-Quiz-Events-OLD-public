@@ -7,8 +7,15 @@ metadata:
     app.kubernetes.io/name: quiz-backend
     app.kubernetes.io/part-of: gravitee-quiz
 data:
-  BASE_PATH: ""
-  CORS_ORIGINS: "https://api-masters.events.gravitee.io"
+  # Same-origin behind the ingress needs no CORS; kept for tools calling the API cross-origin.
+  CORS_ORIGINS: "https://quiz.events.gravitee.io"
+  # No public Swagger UI / OpenAPI document in production.
+  ENABLE_DOCS: "false"
+  # A game can only be submitted with the token returned when it was started (stops anyone from
+  # submitting - or zeroing - somebody else's game by guessing its numeric id).
+  REQUIRE_SUBMIT_TOKEN: "true"
+  # Admin login: 10 failures slow an IP down (429 unless the password is right), 50 lock it for 5 min.
+  LOGIN_HARD_MAX_FAILURES: "50"
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -19,4 +26,8 @@ metadata:
     app.kubernetes.io/name: quiz-frontend
     app.kubernetes.io/part-of: gravitee-quiz
 data:
-  API_BASE_URL: "https://api-masters.events.gravitee.io/api"
+  # Same origin: the ingress routes /api to the backend. Becomes window.QUIZ_CONFIG.apiBase.
+  API_BASE_URL: "/api"
+  # Public origin printed / encoded in the scoreboard QR code (and the short URL under it), whatever address the
+  # big screen happens to be opened from. Origin only, no path. Becomes window.QUIZ_CONFIG.publicBaseUrl.
+  PUBLIC_BASE_URL: "https://quiz.events.gravitee.io"

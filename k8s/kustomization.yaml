@@ -3,31 +3,30 @@ kind: Kustomization
 
 namespace: quiz-game
 
+# Secrets are deliberately NOT listed: applying a Secret manifest would overwrite the live values.
+#   quiz-db-secret      already exists in the cluster, never touched by this kustomization
+#   quiz-backend-secret created / completed by k8s/create-backend-secret.sh
+# secrets.example.yaml documents the keys and is for reference only.
 resources:
   - namespace.yaml
-  - secrets.yaml
   - configmaps.yaml
   - database.yaml
   - backend.yaml
-  - game-client.yaml
+  - web.yaml
   - admin-console.yaml
-  - scoreboard.yaml
+  - networkpolicy.yaml
   - ingress.yaml
 
+# Must stay as is: these labels are part of the (immutable) selectors of the live Deployments.
 commonLabels:
   app.kubernetes.io/managed-by: kustomize
   app.kubernetes.io/part-of: gravitee-quiz
 
+# k8s/deploy.sh renders a temporary copy of this file with the requested tag.
 images:
-  - name: gravitee/quiz-backend
-    newName: dobl1/quiz-backend
-    newTag: "1.0.5"
-  - name: gravitee/quiz-game-client
-    newName: dobl1/quiz-game-client
-    newTag: "1.0.5"
-  - name: gravitee/quiz-admin-console
-    newName: dobl1/quiz-admin-console
-    newTag: "1.0.5"
-  - name: gravitee/quiz-scoreboard
-    newName: dobl1/quiz-scoreboard
-    newTag: "1.0.5"
+  - name: dobl1/quiz-backend
+    newTag: "2.0.0"
+  - name: dobl1/quiz-web
+    newTag: "2.0.0"
+  - name: dobl1/quiz-admin-console
+    newTag: "2.0.0"
