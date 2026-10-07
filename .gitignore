@@ -38,3 +38,19 @@ Thumbs.db
 .env
 .env.local
 buzzer-firmware/build/
+
+# Node / e2e
+node_modules/
+e2e/test-results/
+e2e/playwright-report/
+e2e/.shots/
+
+# Local backups & scratch
+backups/
+*.dump
+*.sql.gz
+
+# local-only files
+*.local.txt
+backups/
+questions/*Gartner*

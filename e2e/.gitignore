@@ -1,0 +1,4 @@
+tools/webkit-macos26/.build/
+test-results/
+playwright-report/
+.shots/

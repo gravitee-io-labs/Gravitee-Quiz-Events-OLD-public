@@ -1,0 +1,21 @@
+{
+  "name": "gravitee-quiz-e2e",
+  "private": true,
+  "version": "1.0.0",
+  "description": "End-to-end tests and visual QA helpers for Gravitee Quiz Events",
+  "scripts": {
+    "test": "playwright test",
+    "test:chromium": "playwright test --project=chromium",
+    "test:mobile": "playwright test --project=webkit-mobile",
+    "test:firefox": "playwright test --project=firefox",
+    "test:smoke": "playwright test --project=chromium tests/01a-smoke-seeded.spec.ts tests/01-hub.spec.ts tests/02-event-landing.spec.ts",
+    "report": "playwright show-report",
+    "clean": "node tools/clean-events.mjs",
+    "install-browsers": "playwright install chromium firefox webkit",
+    "shot": "node shot.mjs"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@playwright/test": "^1.50.0"
+  }
+}
